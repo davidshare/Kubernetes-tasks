@@ -10,14 +10,15 @@ For this project, we will need the following:
 
 ### Virtual or Physical Machines
 
-Our cluster will consist of 1 master and 2 worker nodes, plus a jumpbox for accessing the nodes.
+Our cluster will consist of 1 master and 2 worker nodes. A machine for a jump box, and another for a a loadbalancer.
 
-| Name    | Description              | CPU | RAM   | Storage |
-| ------- | ------------------------ | --- | ----- | ------- |
-| jumpbox | Administration host      | 1   | 512MB | 10GB    |
-| server  | Kubernetes Master node   | 1   | 2GB   | 20GB    |
-| node-0  | Kubernetes worker node 1 | 1   | 2GB   | 20GB    |
-| node-1  | Kubernetes worker node 2 | 1   | 2GB   | 20GB    |
+| Name         | Description              | CPU | RAM   | Storage | Ip   | Forwarded Port |
+| ------------ | ------------------------ | --- | ----- | ------- | ---- | -------------- |
+| jumpbox      | Administration host      | 1   | 512MB | 10GB    | 10GB | 10GB           |
+| server       | Kubernetes Master node   | 1   | 2GB   | 20GB    | 10GB | 10GB           |
+| node-0       | Kubernetes worker node 1 | 1   | 2GB   | 20GB    | 10GB | 10GB           |
+| node-1       | Kubernetes worker node 2 | 1   | 2GB   | 20GB    | 10GB | 10GB           |
+| Loadbalancer | Kubernetes loadbalancer  | 1   | 512MB | 5GB     | 10GB | 10GB           |
 
 ### Operating System
 

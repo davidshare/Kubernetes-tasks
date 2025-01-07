@@ -1,0 +1,92 @@
+# Define how much memory your computer has in GB (e.g. 8, 16)
+# Larger nodes will be created if you have more.
+RAM_SIZE = 16  # Set to your available usable RAM in GB
+CPU_CORES = 8  # Set to your available CPU cores
+
+# Internal network prefix for the VM network
+IP_NW = "192.168.56."
+
+# Calculate resource amounts
+# Master plane nodes have 3GB RAM max, worker nodes have 2GB RAM max
+RESOURCES = {
+  "master" => {
+    "ram" => [3072, RAM_SIZE / 4 * 1024].min,  # Max 3GB per master
+    "cpu" => 2  # Set CPUs to 2 for all master nodes
+  },
+  "worker" => {
+    "ram" => [2048, RAM_SIZE / 6 * 1024].min,  # Max 2GB per worker
+    "cpu" => 1  # Set CPUs to 1 for worker nodes
+  },
+}
+
+# Define the number of master and worker nodes
+NUM_MASTER_NODES = 2
+NUM_WORKER_NODE = 2
+LB_RAM = 512  # Load balancer gets 512MB of RAM
+LB_CPU = 1    # Load balancer gets 1 CPU
+
+# Host address start points
+MASTER_IP_START = 10
+NODE_IP_START = 20
+LB_IP_START = 30
+JUMP_IP_START = 40
+
+# Vagrant configuration
+Vagrant.configure("2") do |config|
+  config.vm.box = "ubuntu/jammy64"
+  config.vm.boot_timeout = 900
+  config.vm.synced_folder "/media/davidshare/Tersu", "/vagrant_data"
+  config.vm.box_check_update = false
+
+  # Provision Jumpbox Node
+  config.vm.define "jumpbox" do |node|
+    node.vm.provider "virtualbox" do |vb|
+      vb.name = "jumpbox"
+      vb.memory = LB_RAM
+      vb.cpus = LB_CPU
+    end
+    node.vm.hostname = "jumpbox"
+    node.vm.network :private_network, ip: IP_NW + "#{JUMP_IP_START}"
+    node.vm.network "forwarded_port", guest: 22, host: 2731
+  end
+
+  # Provision Master Nodes
+  (1..NUM_MASTER_NODES).each do |i|
+    config.vm.define "k8s-master#{i}" do |node|
+      node.vm.provider "virtualbox" do |vb|
+        vb.name = "k8s-master-#{i}"
+        vb.memory = RESOURCES["master"]["ram"]
+        vb.cpus = RESOURCES["master"]["cpu"]
+      end
+      node.vm.hostname = "masterplane0#{i}"
+      node.vm.network :private_network, ip: IP_NW + "#{MASTER_IP_START + i}"
+      node.vm.network "forwarded_port", guest: 22, host: "#{2710 + i}"
+    end
+  end
+
+  # Provision Worker Nodes
+  (1..NUM_WORKER_NODE).each do |i|
+    config.vm.define "worker#{i}" do |node|
+      node.vm.provider "virtualbox" do |vb|
+        vb.name = "k8s-worker-#{i}"
+        vb.memory = RESOURCES["worker"]["ram"]
+        vb.cpus = RESOURCES["worker"]["cpu"]
+      end
+      node.vm.hostname = "worker#{i}"
+      node.vm.network :private_network, ip: IP_NW + "#{NODE_IP_START + i}"
+      node.vm.network "forwarded_port", guest: 22, host: "#{2720 + i}"
+    end
+  end
+
+  # Provision Load Balancer Node
+  config.vm.define "loadbalancer" do |node|
+    node.vm.provider "virtualbox" do |vb|
+      vb.name = "loadbalancer"
+      vb.memory = LB_RAM
+      vb.cpus = LB_CPU
+    end
+    node.vm.hostname = "loadbalancer"
+    node.vm.network :private_network, ip: IP_NW + "#{LB_IP_START}"
+    node.vm.network "forwarded_port", guest: 22, host: 2732
+  end
+end
