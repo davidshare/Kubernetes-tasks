@@ -56,13 +56,13 @@ Vagrant.configure("2") do |config|
 
   # Provision Master Nodes
   (1..NUM_MASTER_NODES).each do |i|
-    config.vm.define "master#{i}" do |node|
+    config.vm.define "master0#{i}" do |node|
       node.vm.provider "virtualbox" do |vb|
-        vb.name = "master#{i}"
+        vb.name = "master0#{i}"
         vb.memory = RESOURCES["master"]["ram"]
         vb.cpus = RESOURCES["master"]["cpu"]
       end
-      node.vm.hostname = "master#{i}"
+      node.vm.hostname = "master0#{i}"
       node.vm.network :private_network, ip: IP_NW + "#{MASTER_IP_START + i}"
       node.vm.network "forwarded_port", guest: 22, host: "#{2710 + i}"
     end
@@ -70,13 +70,13 @@ Vagrant.configure("2") do |config|
 
   # Provision Worker Nodes
   (1..NUM_WORKER_NODE).each do |i|
-    config.vm.define "worker#{i}" do |node|
+    config.vm.define "worker0#{i}" do |node|
       node.vm.provider "virtualbox" do |vb|
-        vb.name = "k8s-worker-#{i}"
+        vb.name = "worker0#{i}"
         vb.memory = RESOURCES["worker"]["ram"]
         vb.cpus = RESOURCES["worker"]["cpu"]
       end
-      node.vm.hostname = "worker#{i}"
+      node.vm.hostname = "worker0#{i}"
       node.vm.network :private_network, ip: IP_NW + "#{NODE_IP_START + i}"
       node.vm.network "forwarded_port", guest: 22, host: "#{2720 + i}"
     end
