@@ -1,8 +1,8 @@
 #!/bin/bash
 
-generate_certs(){
-  sudo sed -i '0,/RANDFILE/{s/RANDFILE/\#&/}' /etc/ssl/openssl.cnf
+sudo sed -i '0,/RANDFILE/{s/RANDFILE/\#&/}' /etc/ssl/openssl.cnf
 
+{
   openssl genrsa -out ca.key 4096
   openssl req -x509 -new -sha512 -noenc \
     -key ca.key -days 3653 \
@@ -36,20 +36,22 @@ generate_certs(){
   done
 }
 
-distribute_certificates(){
-  ## Move certificates to master
-  for instance in master01 master02; do
-
-  sudo mkdir -p /var/lib/kubernetes/
-    sudo cp ca.crt ca.key kube-apiserver.crt kube-apiserver.key \
+for instance in master01 master02; do
+  ssh vagrant@${instance} 'mkdir -p /var/lib/kubernetes/'
+  scp cp ca.crt ca.key kube-apiserver.crt kube-apiserver.key \
     service-account.key service-account.crt \
     etcd-server.key etcd-server.crt \
-    encryption-config.yaml /var/lib/kubernetes/
+    encryption-config.yaml vagrang@${instance}:/var/lib/kubernetes/
 
 
-    scp ca.crt ca.key kube-apiserver.key kube-apiserver.crt \
-      service-account.key service-account.crt \
-      etcd-server.key etcd-server.crt \
-      vagrant@${instance}:/var/lib/kubernetes/
-  done
-}
+  scp ca.crt ca.key kube-apiserver.key kube-apiserver.crt \
+    service-account.key service-account.crt \
+    etcd-server.key etcd-server.crt \
+    vagrant@${instance}:/var/lib/kubernetes/
+done
+
+for instance in worker01 worker02; do
+  ssh vagrant@${instance} "mkdir -p /var/lib/{kubelet,kubernetes}"
+  scp ${instance}.crt ${instance}.key  vagrant@${instance}:/var/lib/kubelet/
+  scp ca.crt vagrant@${instance}:/var/lib/kubernetes
+done
