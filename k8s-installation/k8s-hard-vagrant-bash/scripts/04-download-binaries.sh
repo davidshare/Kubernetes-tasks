@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e  # Exit on error
+
 mkdir -p downloads
 cd downloads || exit
 
@@ -18,15 +20,16 @@ wget -q --show-progress --https-only --timestamping \
 
 {
   tar -xvf etcd-v3.5.18-linux-amd64.tar.gz
+  tar -xvf crictl-v1.32.0-linux-amd64.tar.gz
   mv runc.amd64 runc
   ls -al
 }
 
-rm etcd-v3.5.18-linux-amd64.tar.gz
+rm etcd-v3.5.18-linux-amd64.tar.gz crictl-v1.32.0-linux-amd64.tar.gz
 
 binaries=(
   kubectl kube-apiserver kube-controller-manager kube-scheduler 
-  kube-proxy kubelet runc etcd etcdctl
+  kube-proxy kubelet runc etcd etcdctl crictl
 )
 
 for binary in "${binaries[@]}"; do

@@ -1,4 +1,6 @@
 #!/bin/bash
+
+set -e  # Exit on error
 export DEBIAN_FRONTEND=noninteractive
 
 echo "##### Installing basic utils #####"

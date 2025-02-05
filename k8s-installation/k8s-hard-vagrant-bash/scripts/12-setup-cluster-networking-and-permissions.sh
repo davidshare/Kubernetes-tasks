@@ -1,15 +1,40 @@
-#!/bin/sh
+#!/bin/bash
+set -e  # Exit on error
+export KUBECONFIG=/etc/kubernetes/admin.kubeconfig
 
-# 1. Install CNI Plugins on All Nodes
-mkdir -p /opt/cni/bin
-curl -L -o /tmp/cni-plugins.tgz https://github.com/containernetworking/plugins/releases/download/v1.2.0/cni-plugins-linux-amd64-v1.2.0.tgz
-tar -C /opt/cni/bin -xzf /tmp/cni-plugins.tgz
+### Install Calico
+{
+  # 01. Install operator
+  kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.1/manifests/tigera-operator.yaml
 
-# 2. Install Calico CNI
-kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
+  # 02. Download CRDs
+  curl https://raw.githubusercontent.com/projectcalico/calico/v3.29.1/manifests/custom-resources.yaml -O
 
-# 3. Verify Pod Networking
-kubectl get pods -n kube-system
+  # 03. Apply CRDs
+  kubectl create -f custom-resources.yaml
+
+  # Verify Calico pods are running
+  echo "Waiting for Calico pods to be ready..."
+  kubectl -n kube-system wait --for=condition=ready pod -l k8s-app=calico-node --timeout=300s
+
+  echo "Calico CNI installed successfully."
+}
+
+# Install CoreDNS
+{
+  echo "Installing CoreDNS..."
+  kubectl apply -f configs/kubernetes-templates/coredns.yaml
+
+  # Verify CoreDNS is running
+  echo "Waiting for CoreDNS pods to be ready..."
+  kubectl -n kube-system wait --for=condition=ready pod -l k8s-app=kube-dns --timeout=300s
+
+  echo "CoreDNS installed successfully."
+
+  # Show final status
+  kubectl get pods -n kube-system
+  echo "Calico and CoreDNS setup complete."
+}
 
 # 4. Check Node-to-Node Communication
 echo "Testing inter-node connectivity"

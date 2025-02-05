@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e  # Exit on error
+
 # Disable interactive prompts
 export DEBIAN_FRONTEND=noninteractive
 

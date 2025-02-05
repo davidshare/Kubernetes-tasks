@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e  # Exit on error
+
 # Declare arrays to hold IP addresses and hostnames
 declare -a ips
 declare -a hosts

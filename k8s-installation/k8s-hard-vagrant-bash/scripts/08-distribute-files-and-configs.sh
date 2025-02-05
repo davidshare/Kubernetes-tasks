@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e  # Exit on error
+
 cp kubect /usr/local/bin/kubectl
 
 # distribute files and binaries to master notes
@@ -17,14 +19,14 @@ done
 # Distribute files and binaries to worker nodes
 for instance in worker01 worker02; do
   scp \
-    downloads/{kubelet,kube-proxy,kubectl,runc} \
-    downloads/{crictl-v1.32.0-linux-amd64,containerd-2.0.2-linux-amd64}.tar.gz \
-    downloads/cni-plugins-linux-arm64-v1.3.0.tgz \
+    downloads/{kubelet,kube-proxy,kubectl,runc,crictl} \
+    downloads/{containerd-2.0.2-linux-amd64.tar.gz,cni-plugins-linux-arm64-v1.3.0.tgz} \
     certs/{ca,${instance}}.crt \
     certs/${instance}.key \
     ../kube-configs/{kube-proxy,${instance}}.kubeconfig \
     ../kubeconfigs/{kubelet,kube-proxy}-config.yaml \
     ../config/systemd-units/{kubelet,kube-proxy,containerd}.service \
+    ../configs/{10-bridge,99-loopback}.conf containerd-config.yaml \
     vagrant@${instance}:~/
 done
 

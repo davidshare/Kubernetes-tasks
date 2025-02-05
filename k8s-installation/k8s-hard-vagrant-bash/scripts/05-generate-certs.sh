@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e  # Exit on error
+
 sudo sed -i '0,/RANDFILE/{s/RANDFILE/\#&/}' /etc/ssl/openssl.cnf
 
 mkdir -p ./certs

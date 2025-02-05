@@ -113,4 +113,9 @@ Vagrant.configure("2") do |config|
   config.trigger.after :provision, target: "jumpbox" do
     run "vagrant provision master01 master02 worker01 worker02 loadbalancer"
   end
+
+  # Install calico, coredns, and test the cluster
+  config.trigger.after :provision, target: ["master01", "master02", "worker01", "worker02", "loadbalancer"] do
+    run "vagrant ssh jumpbox -c 'bash /vagrant/scripts/12-setup-cluster-networking-and-permissions.sh'"
+  end  
 end
