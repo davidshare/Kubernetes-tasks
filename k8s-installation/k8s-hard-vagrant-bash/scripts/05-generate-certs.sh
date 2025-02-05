@@ -2,6 +2,9 @@
 
 sudo sed -i '0,/RANDFILE/{s/RANDFILE/\#&/}' /etc/ssl/openssl.cnf
 
+mkdir -p ./certs
+cd certs || exit
+
 {
   openssl genrsa -out ca.key 4096
   openssl req -x509 -new -sha512 -noenc \
@@ -33,12 +36,4 @@ sudo sed -i '0,/RANDFILE/{s/RANDFILE/\#&/}' /etc/ssl/openssl.cnf
   done
 }
 
-for instance in master01 master02; do
-  scp ca.crt ca.key kube-apiserver.crt kube-apiserver.key \
-    service-account.key service-account.crt etcd-server.key etcd-server.crt \
-    vagrant@${instance}:~/
-done
-
-for instance in worker01 worker02; do
-  scp ca.crt ${instance}.crt ${instance}.key  vagrant@${instance}:~/
-done
+cd ../
