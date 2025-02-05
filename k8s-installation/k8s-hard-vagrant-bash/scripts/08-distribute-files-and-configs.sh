@@ -52,6 +52,11 @@ done
 
 cd ../
 
+# Distribute encryption keys
+for instance in master01 master02; do
+  scp encryption-config.yaml vagrant@${instance}:~/
+done
+
 # Distribute loadbalancer config
 echo "Move haproxy config to loadbalancer instance"
 scp config/haproxy.cfg vagrant@loadbalancer:~/
