@@ -55,6 +55,14 @@ Vagrant.configure("2") do |config|
     node.vm.hostname = "jumpbox"
     node.vm.network :private_network, ip: IP_NW + "#{JUMP_IP_START}"
     node.vm.network "forwarded_port", guest: 22, host: 2731
+    jumpbox.vm.provision "shell", path: "01-scripts/setup-vms.sh", privileged: true, run: "never"
+    jumpbox.vm.provision "shell", path: "02-scripts/setup-hosts.sh", privileged: true, run: "never"
+    jumpbox.vm.provision "shell", path: "03-scripts/setup-jumpbox.sh", privileged: true, run: "never"
+    jumpbox.vm.provision "shell", path: "04-scripts/dowload-binaries.sh", privileged: true, run: "never"
+    jumpbox.vm.provision "shell", path: "05-scripts/generate-certs.sh", privileged: true, run: "never"
+    jumpbox.vm.provision "shell", path: "06-scripts/generate-kube-configs.sh", privileged: true, run: "never"
+    jumpbox.vm.provision "shell", path: "07-scripts/generate-data-encryptions.sh", privileged: true, run: "never"
+    jumpbox.vm.provision "shell", path: "08-scripts/distribute-files-and-configs.sh", privileged: true, run: "never"
   end
   
 
@@ -96,5 +104,10 @@ Vagrant.configure("2") do |config|
     node.vm.hostname = "loadbalancer"
     node.vm.network :private_network, ip: IP_NW + "#{LB_IP_START}"
     node.vm.network "forwarded_port", guest: 22, host: 2732
+  end
+
+  # Provision Other Machines Only After Jumpbox Completes
+  config.trigger.after :provision, target: "jumpbox" do
+    run "vagrant provision master01 master02 worker01 worker02 loadbalancer"
   end
 end
