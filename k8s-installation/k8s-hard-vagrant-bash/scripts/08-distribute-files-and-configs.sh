@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 cp kubect /usr/local/bin/kubectl
 
@@ -51,6 +51,20 @@ for instance in master01 master02; do
 done
 
 cd ../
+
+#Distribute Service Files
+for instance in master01 master02; do
+  scp \
+    ../config/systemd-units/{kubeapi-server,etcd,kubelet,kube-controller-manager,kube-scheduler}.service \
+    vagrant@"${instance}":~/
+done
+
+for instance in master01 master02; do
+  scp \
+    ../config/systemd-units/{kubelet,kube-proxy,containerd}.service \
+    vagrant@"${instance}":~/
+done
+
 
 # Distribute encryption keys
 for instance in master01 master02; do
