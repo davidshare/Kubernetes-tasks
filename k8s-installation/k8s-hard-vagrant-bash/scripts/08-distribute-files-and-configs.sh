@@ -10,7 +10,7 @@ for instance in master01 master02; do
     certs/{ca,kube-apiserver,service-account,etcd-server}.key \
     kube-configs/{admin,kube-controller-manager,kube-scheduler}.kubeconfig \
     ../config/systemd-units/{kubeapi-server,etcd,kubelet,kube-controller-manager,kube-scheduler}.service \
-    encryption-config.yaml \
+    encryption-config.yaml ../kubeconfigs/kube-scheduler.yaml\
     vagrant@${instance}:~/
 done
 

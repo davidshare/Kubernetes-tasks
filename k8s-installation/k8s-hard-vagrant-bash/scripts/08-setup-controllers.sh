@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Disable interactive prompts
 export DEBIAN_FRONTEND=noninteractive
@@ -12,38 +12,57 @@ HOSTNAME=$(hostname -s)
 export INTERNAL_IP
 export ETCD_NAME
 
-mkdir /var/lib/kubernetes
+mkdir -p /var/lib/kubernetes /etc/etcd/ /var/lib/etcd/
+chmod 700 /var/lib/etcd
 
-echo "[Setting up ${HOSTNAME} TASK 1] - Move binaries to their respective directories"
+# Install controller binaries
 mv kube-apiserver kube-controller-manager kube-scheduler kubectl etcd etcdctl /usr/local/bin
 
-echo "[Setting up ${HOSTNAME} TASK 2] - Move certs to their respective directories"
-mkdir -p /var/lib/kubernetes/ /etc/etcd/ /var/lib/etcd/
 
+### Configure apiserver
+# 01. Copy certificates
+mv {ca,kube-api-server,service-accounts}.crt \
+  {ca,kube-api-server,service-accounts}.key \
+  encryption-config.yaml \
+  /var/lib/kubernetes/
+
+#02. Create systemd service
+envsubst < kube-apiserver.service > /etc/systemd/system/kube-apiserver.service
+
+
+### Configure the Kubernetes Controller Manager
+# 01. Move the `kube-controller-manager` kubeconfig into place:
+mv kube-controller-manager.kubeconfig /var/lib/kubernetes/
+
+# 02. Create the `kube-controller-manager.service` systemd unit file:
+mv kube-controller-manager.service /etc/systemd/system/
+
+
+### Configure the Kubernetes Scheduler
+# 01. Move the `kube-scheduler` kubeconfig into place:
+mv kube-scheduler.kubeconfig /var/lib/kubernetes/
+
+# 02. Create the `kube-scheduler.yaml` configuration file:
+mv kube-scheduler.yaml /etc/kubernetes/config/
+
+# 03. Create the `kube-scheduler.service` systemd unit file:
+mv kube-scheduler.service /etc/systemd/system/
+
+
+### Bootstrap etcd
+# 0.1 Copy etcd certs
 cp ca.crt /etc/etcd/
 mv etcd-server.crt etcd-server.key /etc/etcd
 
-mv ca.crt ca.key kube-apiserver.crt kube-apiserver.key \
-  service-account.crt service-account.key /var/lib/kubernetes
-
-echo "[Setting up ${HOSTNAME} TASK 3] - Move kubeconfigs to their respective directories"
-mv admin.kubeconfig kube-controller-manager.kubeconfig \
-  kube-scheduler.kubeconfig /var/lib/kubernetes
-
-echo "[Setting up ${HOSTNAME} TASK 4] - Copy encryption key"
-mv encryption-config.yaml /var/lib/kubernetes
-
-
-echo "[Setting up ${HOSTNAME} TASK 5] - Setup services"
+#02. Create etcd systemd service
 envsubst < etcd.service > /etc/systemd/system/etcd.service
-envsubst < kube-apiserver.service > /etc/systemd/system/kube-apiserver.service
-mv kube-controller-manager.service kube-scheduler.service /etc/systemd/system/
 
-echo "[Setting up ${HOSTNAME} TASK 6] - Enable and start all services"
+## Enable and start all services"
 sudo systemctl daemon-reload
 sudo systemctl enable kube-apiserver kube-controller-manager kube-scheduler etcd
 sudo systemctl start kube-apiserver kube-controller-manager kube-scheduler etcd
 
+sleep 30
 
 echo "[Setting up ${HOSTNAME} TASK 7] - Confirm ETCD Status"
 sudo systemctl status etcd.service
@@ -54,6 +73,3 @@ sudo ETCDCTL_API=3 etcdctl member list \
   --cacert=/etc/etcd/ca.crt \
   --cert=/etc/etcd/etcd-server.crt \
   --key=/etc/etcd/etcd-server.key
-
-echo "[Setting up ${HOSTNAME} TASK 8] - Validate Kubernetes Component Status"
-kubectl get componentstatuses --kubeconfig admin.kubeconfig
