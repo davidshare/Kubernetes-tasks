@@ -4,6 +4,9 @@ source ./output-format.sh
 
 LOADBALANCER_ADDRESS=192.168.56.30
 
+mkdir -p ./kube-configs
+cd ./kube-configs || exit
+
 display_output '[Generate Kubeconfig Task 1] - Generate Kube proxy Config'
 
 kubectl config set-cluster kubernetes-the-hard-way \
@@ -118,18 +121,4 @@ for host in node-0 node-1; do
   kubectl config use-context default --kubeconfig=${host}.kubeconfig
 done
 
-
-display_output '[Generate Kubeconfig Task 6] - Distribute kubeconfigs'
-
-## Distribute to worker nodes
-for instance in worker01 worker02; do  
-  scp kube-proxy.kubeconfig ${instance}.kubeconfig \
-    ../kubeconfigs/kubelet-config.yaml ../kubeconfigs/kube-proxy-config.yaml vagrant@${instance}:~/  
-done
-
-## Distribute to masters
-for instance in master01 master02; do
-  scp admin.kubeconfig kube-controller-manager.kubeconfig kube-scheduler.kubeconfig vagrant@${instance}:~/
-done
-
-
+cd ../

@@ -37,6 +37,21 @@ done
 
 cd ../
 
+
+## Distribute kube configs
+cd kube-configs || exit
+
+for instance in worker01 worker02; do  
+  scp kube-proxy.kubeconfig ${instance}.kubeconfig \
+    ../kubeconfigs/kubelet-config.yaml ../kubeconfigs/kube-proxy-config.yaml vagrant@${instance}:~/  
+done
+
+for instance in master01 master02; do
+  scp admin.kubeconfig kube-controller-manager.kubeconfig kube-scheduler.kubeconfig vagrant@${instance}:~/
+done
+
+cd ../
+
 # Distribute loadbalancer config
 echo "Move haproxy config to loadbalancer instance"
 scp config/haproxy.cfg vagrant@loadbalancer:~/
