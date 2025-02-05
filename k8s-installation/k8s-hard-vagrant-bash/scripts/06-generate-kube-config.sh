@@ -95,37 +95,36 @@ display_output '[Generate Kubeconfig Task 4] - Generate Admin Config'
 
 
 
-display_output '[Generate Kubeconfig Task 5] - Generate worker01 Config'
+display_output '[Generate Kubeconfig Task 5] - Generate worker01 and worker02 Config'
 
-kubectl config set-cluster kubernetes-the-hard-way \
-  --certificate-authority=ca.crt \
-  --embed-certs=true \
-  --server=https://${LOADBALANCER_ADDRESS}:6443 \
-  --kubeconfig=worker01.kubeconfig
+for host in node-0 node-1; do
+  kubectl config set-cluster kubernetes-the-hard-way \
+    --certificate-authority=ca.crt \
+    --embed-certs=true \
+    --server=https://${LOADBALANCER_ADDRESS}:6443 \
+    --kubeconfig=${host}.kubeconfig
 
-kubectl config set-credentials system:kube-proxy \
-  --client-certificate=worker01.crt \
-  --client-key=worker01.key \
-  --embed-certs=true \
-  --kubeconfig=worker01.kubeconfig
+  kubectl config set-credentials system:node:${host} \
+    --client-certificate=${host}.crt \
+    --client-key=${host}.key \
+    --embed-certs=true \
+    --kubeconfig=${host}.kubeconfig
 
-kubectl config set-context default \
-  --cluster=kubernetes-the-hard-way \
-  --user=system:kube-proxy \
-  --kubeconfig=worker01.kubeconfig
+  kubectl config set-context default \
+    --cluster=kubernetes-the-hard-way \
+    --user=system:node:${host} \
+    --kubeconfig=${host}.kubeconfig
 
-kubectl config use-context default --kubeconfig=worker0.kubeconfig
+  kubectl config use-context default --kubeconfig=${host}.kubeconfig
+done
 
 
-display_output '[Generate Kubeconfig Task 5] - Distribute kubeconfigs'
+display_output '[Generate Kubeconfig Task 6] - Distribute kubeconfigs'
 
 ## Distribute to worker nodes
-for instance in worker01 worker02; do
-  ssh vagrant@${instance} "mkdir -p /var/lib/{kube-proxy,kubelet}"
-  
-  scp kube-proxy.kubeconfig vagrant@${instance}:/var/lib/kube-proxy/kubeconfig
-  scp ${instance}.kubeconfig root@${instance}:/var/lib/kubelet/kubeconfig 
-  scp ../kubeconfigs/kubelet-config.yaml root@${instance}:/var/lib/kubelet/kubelet-config.yaml 
+for instance in worker01 worker02; do  
+  scp kube-proxy.kubeconfig ${instance}.kubeconfig \
+    ../kubeconfigs/kubelet-config.yaml ../kubeconfigs/kube-proxy-config.yaml vagrant@${instance}:~/  
 done
 
 ## Distribute to masters

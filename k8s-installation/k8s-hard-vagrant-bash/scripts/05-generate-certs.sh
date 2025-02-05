@@ -10,11 +10,8 @@ sudo sed -i '0,/RANDFILE/{s/RANDFILE/\#&/}' /etc/ssl/openssl.cnf
     -out ca.crt
 
   certs=(
-    "admin" "worker01" "worker02"
-    "kube-proxy" "kube-scheduler"
-    "kube-controller-manager"
-    "kube-apiserver"
-    "service-accounts" "etcd-server"
+    "admin" "worker01" "worker02" "kube-proxy" "kube-scheduler"
+    "kube-controller-manager" "kube-apiserver" "service-accounts" "etcd-server"
   )
 
   for i in "${certs[@]}"; do
@@ -37,21 +34,11 @@ sudo sed -i '0,/RANDFILE/{s/RANDFILE/\#&/}' /etc/ssl/openssl.cnf
 }
 
 for instance in master01 master02; do
-  ssh vagrant@${instance} 'mkdir -p /var/lib/kubernetes/'
-  scp cp ca.crt ca.key kube-apiserver.crt kube-apiserver.key \
-    service-account.key service-account.crt \
-    etcd-server.key etcd-server.crt \
-    encryption-config.yaml vagrang@${instance}:/var/lib/kubernetes/
-
-
-  scp ca.crt ca.key kube-apiserver.key kube-apiserver.crt \
-    service-account.key service-account.crt \
-    etcd-server.key etcd-server.crt \
-    vagrant@${instance}:/var/lib/kubernetes/
+  scp ca.crt ca.key kube-apiserver.crt kube-apiserver.key \
+    service-account.key service-account.crt etcd-server.key etcd-server.crt \
+    vagrant@${instance}:~/
 done
 
 for instance in worker01 worker02; do
-  ssh vagrant@${instance} "mkdir -p /var/lib/{kubelet,kubernetes}"
-  scp ${instance}.crt ${instance}.key  vagrant@${instance}:/var/lib/kubelet/
-  scp ca.crt vagrant@${instance}:/var/lib/kubernetes
+  scp ca.crt ${instance}.crt ${instance}.key  vagrant@${instance}:~/
 done

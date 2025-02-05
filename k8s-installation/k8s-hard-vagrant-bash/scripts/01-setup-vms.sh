@@ -32,7 +32,14 @@ apt-get install -y \
     curl \
     gnupg \
     lsb-release \
-    containerd
+    gettext-base \
+    wget \
+    tar \
+    socat \
+    conntrack \
+    ipset \
+    iptables \
+    jq
 
 echo "[TASK 7] Configure containerd"
 mkdir -p /etc/containerd
@@ -43,3 +50,7 @@ systemctl enable containerd
 echo "[TASK 8] Disable swap"
 swapoff -a
 sed -i '/swap/d' /etc/fstab
+
+echo "[TASK 9] Update DNS"
+sed -i -e 's/#DNS=/DNS=8.8.8.8/' /etc/systemd/resolved.conf
+service systemd-resolved restart
