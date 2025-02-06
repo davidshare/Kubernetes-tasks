@@ -56,11 +56,11 @@ for binary in "${binaries[@]}"; do
   chmod +x ./"${binary}"
 done
 
-echo "=================================== before cleanup files ================================"
-ls -al
-rm -rf etcd-v3.5.18-linux-amd64.tar.gz crictl-v1.32.0-linux-amd64.tar.gz etcd-v3.5.18-linux-amd64
+# echo "=================================== before cleanup files ================================"
+# ls -al
+# rm -rf etcd-v3.5.18-linux-amd64.tar.gz crictl-v1.32.0-linux-amd64.tar.gz etcd-v3.5.18-linux-amd64
 
-echo "=================================== after cleanup files ================================"
-ls -al
+# echo "=================================== after cleanup files ================================"
+# ls -al
 
 cd ../
