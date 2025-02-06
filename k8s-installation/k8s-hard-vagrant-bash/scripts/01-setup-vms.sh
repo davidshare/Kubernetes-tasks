@@ -43,11 +43,6 @@ apt-get install -y \
     iptables \
     jq
 
-echo "[TASK 7] Configure containerd"
-mkdir -p /etc/containerd
-containerd config default | sudo tee /etc/containerd/config.toml
-systemctl restart containerd
-systemctl enable containerd
 
 echo "[TASK 8] Disable swap"
 swapoff -a

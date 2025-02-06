@@ -1,72 +1,62 @@
-# Define how much memory your computer has in GB (e.g. 8, 16)
-# Larger nodes will be created if you have more.
-RAM_SIZE = 16  # Set to your available usable RAM in GB
-CPU_CORES = 8  # Set to your available CPU cores
-
-# Internal network prefix for the VM network
+# Resource configurations remain the same
+RAM_SIZE = 16
+CPU_CORES = 8
 IP_NW = "192.168.56."
 
-# Calculate resource amounts
-# Master plane nodes have 3GB RAM max, worker nodes have 2GB RAM max
 RESOURCES = {
   "master" => {
-    "ram" => [3072, RAM_SIZE / 4 * 1024].min,  # Max 3GB per master
-    "cpu" => 2  # Set CPUs to 2 for all master nodes
+    "ram" => [3072, RAM_SIZE / 4 * 1024].min,
+    "cpu" => 2
   },
   "worker" => {
-    "ram" => [2048, RAM_SIZE / 6 * 1024].min,  # Max 2GB per worker
-    "cpu" => 1  # Set CPUs to 1 for worker nodes
+    "ram" => [2048, RAM_SIZE / 6 * 1024].min,
+    "cpu" => 1
   },
 }
 
-# Define the number of master and worker nodes
 NUM_MASTER_NODES = 2
 NUM_WORKER_NODES = 2
-LB_RAM = 512  # Load balancer gets 512MB of RAM
-LB_CPU = 1    # Load balancer gets 1 CPU
+LB_RAM = 512
+LB_CPU = 1
 
-# Host address start points
 MASTER_IP_START = 10
 NODE_IP_START = 20
 LB_IP_START = 30
 JUMP_IP_START = 40
 
-# Vagrant configuration
 Vagrant.configure("2") do |config|
   config.vm.box = "ubuntu/jammy64"
   config.vm.boot_timeout = 900
   config.vm.synced_folder "/media/davidshare/Tersu", "/vagrant_data"
   config.vm.box_check_update = false
 
-  # # Set up common SSH configuration
-  # config.ssh.username = "ubuntu"  # Set the default user to ubuntu
-  # config.ssh.insert_key = false   # Prevent Vagrant from overwriting the key
-
-  # Provision Jumpbox Node
-  config.vm.define "jumpbox" do |node|
+  # Define jumpbox first - it will be created and provisioned immediately
+  config.vm.define "jumpbox", primary: true do |node|
     node.vm.synced_folder ".", "/home/vagrant"
-  
     node.vm.provider "virtualbox" do |vb|
       vb.name = "jumpbox"
       vb.memory = LB_RAM
       vb.cpus = LB_CPU
     end
-  
     node.vm.hostname = "jumpbox"
     node.vm.network :private_network, ip: IP_NW + "#{JUMP_IP_START}"
     node.vm.network "forwarded_port", guest: 22, host: 2731
-    node.vm.provision "shell", path: "scripts/01-setup-vms.sh", privileged: true, run: "never"
-    node.vm.provision "shell", path: "scripts/02-setup-hosts.sh", privileged: true, run: "never"
-    node.vm.provision "shell", path: "scripts/03-setup-jumpbox.sh", privileged: true, run: "never"
-    node.vm.provision "shell", path: "scripts/04-download-binaries.sh", privileged: true, run: "never"
-    node.vm.provision "shell", path: "scripts/05-generate-certs.sh", privileged: true, run: "never"
-    node.vm.provision "shell", path: "scripts/06-generate-kube-configs.sh", privileged: true, run: "never"
-    node.vm.provision "shell", path: "scripts/07-generate-data-encryption.sh", privileged: true, run: "never"
-    node.vm.provision "shell", path: "scripts/08-distribute-files-and-configs.sh", privileged: true, run: "never"
-  end
-  
 
-  # Provision Master Nodes
+    # Initial jumpbox setup scripts that run immediately
+    node.vm.provision "initial-setup", type: "shell", path: "scripts/01-setup-vms.sh"
+    node.vm.provision "setup-hosts", type: "shell", path: "scripts/02-setup-hosts.sh"
+    # node.vm.provision "setup-jumpbox", type: "shell", path: "scripts/03-setup-jumpbox.sh"
+    node.vm.provision "download-binaries", type: "shell", path: "scripts/04-download-binaries.sh"
+    node.vm.provision "generate-certs", type: "shell", path: "scripts/05-generate-certs.sh"
+    node.vm.provision "generate-kubeconfig", type: "shell", path: "scripts/06-generate-kube-configs.sh"
+    node.vm.provision "generate-encryption", type: "shell", path: "scripts/07-generate-data-encryption.sh"
+    
+    # This script will be triggered after all machines are up
+    node.vm.provision "distribute-files", type: "shell", path: "scripts/08-distribute-files-and-configs.sh", run: "never"
+    node.vm.provision "setup-networking", type: "shell", path: "scripts/12-setup-cluster-networking-and-permissions.sh", run: "never"
+  end
+
+  # Master nodes - created but not provisioned initially
   (1..NUM_MASTER_NODES).each do |i|
     config.vm.define "master0#{i}" do |node|
       node.vm.provider "virtualbox" do |vb|
@@ -77,11 +67,11 @@ Vagrant.configure("2") do |config|
       node.vm.hostname = "master0#{i}"
       node.vm.network :private_network, ip: IP_NW + "#{MASTER_IP_START + i}"
       node.vm.network "forwarded_port", guest: 22, host: "#{2710 + i}"
-      node.vm.provision "shell", path: "scripts/09-setup-controllers.sh", privileged: true, run: "never"
+      node.vm.provision "setup-controller", type: "shell", path: "scripts/09-setup-controllers.sh", run: "never"
     end
   end
 
-  # Provision Worker Nodes
+  # Worker nodes - created but not provisioned initially
   (1..NUM_WORKER_NODES).each do |i|
     config.vm.define "worker0#{i}" do |node|
       node.vm.provider "virtualbox" do |vb|
@@ -92,12 +82,12 @@ Vagrant.configure("2") do |config|
       node.vm.hostname = "worker0#{i}"
       node.vm.network :private_network, ip: IP_NW + "#{NODE_IP_START + i}"
       node.vm.network "forwarded_port", guest: 22, host: "#{2720 + i}"
-      node.vm.provision "shell", path: "scripts/01-setup-vms.sh", privileged: true, run: "never"
-      node.vm.provision "shell", path: "scripts/10-setup-workers.sh", privileged: true, run: "never"
+      node.vm.provision "setup-vm", type: "shell", path: "scripts/01-setup-vms.sh", run: "never"
+      node.vm.provision "setup-worker", type: "shell", path: "scripts/10-setup-workers.sh", run: "never"
     end
   end
 
-  # Provision Load Balancer Node
+  # Load balancer - created but not provisioned initially
   config.vm.define "loadbalancer" do |node|
     node.vm.provider "virtualbox" do |vb|
       vb.name = "loadbalancer"
@@ -107,19 +97,28 @@ Vagrant.configure("2") do |config|
     node.vm.hostname = "loadbalancer"
     node.vm.network :private_network, ip: IP_NW + "#{LB_IP_START}"
     node.vm.network "forwarded_port", guest: 22, host: 2732
-    node.vm.provision "shell", path: "scripts/11-setup-loadbalancer.sh", privileged: true, run: "never"
+    node.vm.provision "setup-lb", type: "shell", path: "scripts/11-setup-loadbalancer.sh", run: "never"
   end
 
-  # Provision Other Machines Only After Jumpbox Completes
-  config.trigger.after :provision do |trigger|
-    trigger.name = "provision-other-machines"
-    trigger.run = { inline: "vagrant provision master01 master02 worker01 worker02 loadbalancer" }
-  end
-
-  # Install calico, coredns, and test the cluster
-  config.trigger.after :provision do |trigger|
-    trigger.name = "setup-cluster-networking"
-    trigger.run = { inline: "vagrant ssh jumpbox -c 'bash /vagrant/scripts/12-setup-cluster-networking-and-permissions.sh'" }
+  # Single trigger to handle the entire sequence
+  config.trigger.after :up do |trigger|
+    trigger.name = "start-provisioning-sequence"
+    trigger.only_on = "loadbalancer"  # Ensures this only runs once, after all machines are up
+    trigger.run = {
+      inline: <<-SHELL
+        echo "Starting automated provisioning sequence..."
+        
+        # Distribute files and configurations
+        vagrant provision jumpbox --provision-with distribute-files
+        
+        # Provision all other nodes
+        vagrant provision master01 master02 --provision-with setup-controller
+        vagrant provision worker01 worker02 --provision-with setup-vm,setup-worker
+        vagrant provision loadbalancer --provision-with setup-lb
+        
+        # Setup networking and permissions
+        vagrant provision jumpbox --provision-with setup-networking
+      SHELL
+    }
   end
 end
-

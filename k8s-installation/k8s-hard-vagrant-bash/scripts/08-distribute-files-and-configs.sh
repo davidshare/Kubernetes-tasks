@@ -2,7 +2,7 @@
 
 set -e  # Exit on error
 
-cp kubect /usr/local/bin/kubectl
+cp kubectl /usr/local/bin/kubectl
 
 # distribute files and binaries to master notes
 for instance in master01 master02; do
