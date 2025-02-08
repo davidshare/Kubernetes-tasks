@@ -1,8 +1,13 @@
 #!/bin/bash
-set -e  # Exit on error
+
+set -e # exit on error
+
+source ./00-output-format.sh
+
 export KUBECONFIG=/etc/kubernetes/admin.kubeconfig
 
 ### Install Calico
+task_echo "[Task 1] - Install Calicos"
 {
   # 01. Install operator
   kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.1/manifests/tigera-operator.yaml
@@ -20,7 +25,7 @@ export KUBECONFIG=/etc/kubernetes/admin.kubeconfig
   echo "Calico CNI installed successfully."
 }
 
-# Install CoreDNS
+task_echo "[Task 2] - Install coredns"
 {
   echo "Installing CoreDNS..."
   kubectl apply -f configs/kubernetes-templates/coredns.yaml
@@ -36,7 +41,7 @@ export KUBECONFIG=/etc/kubernetes/admin.kubeconfig
   echo "Calico and CoreDNS setup complete."
 }
 
-# 4. Check Node-to-Node Communication
+task_echo "[Task 2] - Check Node-to-Node Communication"
 echo "Testing inter-node connectivity"
 kubectl run net-test --image=busybox --restart=Never -- sleep 3600
 POD_IP=$(kubectl get pod net-test -o jsonpath='{.status.podIP}')

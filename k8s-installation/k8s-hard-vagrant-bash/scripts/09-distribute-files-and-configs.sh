@@ -2,7 +2,10 @@
 
 set -e  # Exit on error
 
-# distribute files and binaries to master notes
+source ./00-output-format.sh
+
+# distribute files and binaries to master nodes
+task_echo "[Task 1] - distribute files and binaries to master nodes"
 for instance in master01 master02; do
   scp \
     cluster-files/downloads/{kube-apiserver,kube-controller-manager,kube-scheduler,kubectl,etcd,etcdctl} \
@@ -15,6 +18,7 @@ for instance in master01 master02; do
 done
 
 # Distribute files and binaries to worker nodes
+task_echo "[Task 2] - distribute files and binaries to worker nodes"
 for instance in worker01 worker02; do
   scp \
     cluster-files/downloads/{kubelet,kube-proxy,kubectl,runc,crictl} \
@@ -30,4 +34,5 @@ done
 
 
 # Distribute loadbalancer config
+task_echo "[Task 3] - Distribute loadbalancer config"
 scp config/haproxy.cfg vagrant@loadbalancer:~/

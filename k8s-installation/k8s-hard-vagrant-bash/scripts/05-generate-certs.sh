@@ -2,18 +2,28 @@
 
 set -e  # Exit on error
 
+source ./00-output-format.sh
+
+task_echo "[Task 1] - comment out RANDFILE line in openssl conf"
 sudo sed -i '0,/RANDFILE/{s/RANDFILE/\#&/}' /etc/ssl/openssl.cnf
 
-mkdir -p ./cluster-files/certs
-cd ./cluster-files/certs || exit
+task_echo "[Task 2] - create and navigate to certs directory"
+{
+  mkdir -p ./cluster-files/certs
+  cd ./cluster-files/certs || exit
+}
 
+task_echo "[Task 3] - generate certificate authority and root certificate"
 {
   openssl genrsa -out ca.key 4096
   openssl req -x509 -new -sha512 -noenc \
     -key ca.key -days 3653 \
     -config ../../config/certs-conf/ca.conf \
     -out ca.crt
+}
 
+task_echo "[Task 4] - generate certs for all components"
+{
   certs=(
     "admin" "worker01" "worker02" "kube-proxy" "kube-scheduler"
     "kube-controller-manager" "kube-apiserver" "service-accounts" "etcd-server"

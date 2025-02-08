@@ -2,31 +2,33 @@
 
 set -e  # Exit on error
 
+source ./00-output-format.sh
+
 # Disable interactive prompts
 export DEBIAN_FRONTEND=noninteractive
 
-echo "[TASK 1] Show whoami"
+task_echo "[TASK 1] Show whoami"
 whoami
 
-echo "[TASK 2] Stop and Disable firewall"
+task_echo "[TASK 2] Stop and Disable firewall"
 systemctl disable --now ufw >/dev/null 2>&1
 
-echo "[TASK 3] Letting iptables see bridged traffic"
+task_echo "[TASK 3] Letting iptables see bridged traffic"
 modprobe br_netfilter
 
-echo "[TASK 4] Enable and Load Kernel modules"
+task_echo "[TASK 4] Enable and Load Kernel modules"
 cat >>/etc/modules-load.d/k8s.conf<<EOF
 br_netfilter
 EOF
 
-echo "[TASK 5] Add Kernel settings"
+task_echo "[TASK 5] Add Kernel settings"
 cat >>/etc/sysctl.d/k8s.conf<<EOF
 net.bridge.bridge-nf-call-ip6tables = 1
 net.bridge.bridge-nf-call-iptables = 1
 EOF
 sysctl --system
 
-echo "[TASK 6] Install containerd"
+task_echo "[TASK 6] Install needed packages"
 apt-get update
 apt-get install -y \
     apt-transport-https \
@@ -44,10 +46,10 @@ apt-get install -y \
     jq
 
 
-echo "[TASK 8] Disable swap"
+task_echo "[TASK 7] Disable swap"
 swapoff -a
 sed -i '/swap/d' /etc/fstab
 
-echo "[TASK 9] Update DNS"
+task_echo "[TASK 8] Update DNS"
 sed -i -e 's/#DNS=/DNS=8.8.8.8/' /etc/systemd/resolved.conf
 service systemd-resolved restart
