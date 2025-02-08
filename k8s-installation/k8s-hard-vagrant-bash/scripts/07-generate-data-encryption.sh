@@ -1,6 +1,6 @@
-#!/bin/sh
+#!/bin/bash
 
-export ENCRYPTION_KEY=$(head -c 32 /dev/urandom | base64)
+ENCRYPTION_KEY=$(head -c 32 /dev/urandom | base64)
+export ENCRYPTION_KEY
 
-envsubst < config/encryption-config.yaml \
-  > encryption-config.yaml
+envsubst < config/kubeconfigs/encryption-config.yaml > ./cluster-files/encryption-config.yaml

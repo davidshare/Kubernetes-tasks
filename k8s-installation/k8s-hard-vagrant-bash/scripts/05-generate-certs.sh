@@ -4,14 +4,14 @@ set -e  # Exit on error
 
 sudo sed -i '0,/RANDFILE/{s/RANDFILE/\#&/}' /etc/ssl/openssl.cnf
 
-mkdir -p ./certs
-cd certs || exit
+mkdir -p ./cluster-files/certs
+cd ./cluster-files/certs || exit
 
 {
   openssl genrsa -out ca.key 4096
   openssl req -x509 -new -sha512 -noenc \
     -key ca.key -days 3653 \
-    -config ../config/certs-conf/ca.conf \
+    -config ../../config/certs-conf/ca.conf \
     -out ca.crt
 
   certs=(
@@ -25,7 +25,7 @@ cd certs || exit
 
     # Generate CSR using the corresponding configuration file
     openssl req -new -key "${i}.key" -sha256 \
-      -config "../config/certs-conf/${i}.conf" \
+      -config "../../config/certs-conf/${i}.conf" \
       -out "${i}.csr"
     
     # Sign the CSR using the CA
@@ -38,4 +38,4 @@ cd certs || exit
   done
 }
 
-cd ../
+cd ~/ || exit

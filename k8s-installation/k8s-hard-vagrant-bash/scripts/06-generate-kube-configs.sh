@@ -1,13 +1,14 @@
-#!/bin/sh
+#!/bin/bash
 
-source ./output-format.sh
+set -e  # Exit on error
 
 LOADBALANCER_ADDRESS=192.168.56.30
 
-mkdir -p ./kube-configs
-cd ./kube-configs || exit
+cp ./cluster-files/downloads/kubectl /usr/local/bin/
 
-display_output '[Generate Kubeconfig Task 1] - Generate Kube proxy Config'
+cd ./cluster-files/certs || exit
+
+echo '[Generate Kubeconfig Task 1] - Generate Kube proxy Config'
 
 kubectl config set-cluster kubernetes-the-hard-way \
   --certificate-authority=ca.crt \
@@ -29,7 +30,7 @@ kubectl config set-context default \
 kubectl config use-context default --kubeconfig=kube-proxy.kubeconfig
 
 
-display_output '[Generate Kubeconfig Task 2] - Generate Kube Controller manager Config'
+echo '[Generate Kubeconfig Task 2] - Generate Kube Controller manager Config'
 
 kubectl config set-cluster kubernetes-the-hard-way \
   --certificate-authority=ca.crt \
@@ -51,8 +52,7 @@ kubectl config set-context default \
 kubectl config use-context default --kubeconfig=kube-controller-manager.kubeconfig
 
 
-
-display_output '[Generate Kubeconfig Task 3] - Generate Kube Scheduler Config'
+echo '[Generate Kubeconfig Task 3] - Generate Kube Scheduler Config'
 
 kubectl config set-cluster kubernetes-the-hard-way \
   --certificate-authority=ca.crt \
@@ -75,7 +75,7 @@ kubectl config use-context default --kubeconfig=kube-scheduler.kubeconfig
 
 
 
-display_output '[Generate Kubeconfig Task 4] - Generate Admin Config'
+echo '[Generate Kubeconfig Task 4] - Generate Admin Config'
 
   kubectl config set-cluster kubernetes-the-hard-way \
     --certificate-authority=ca.crt \
@@ -98,9 +98,9 @@ display_output '[Generate Kubeconfig Task 4] - Generate Admin Config'
 
 
 
-display_output '[Generate Kubeconfig Task 5] - Generate worker01 and worker02 Config'
+echo '[Generate Kubeconfig Task 5] - Generate worker01 and worker02 Config'
 
-for host in node-0 node-1; do
+for host in worker01 worker02; do
   kubectl config set-cluster kubernetes-the-hard-way \
     --certificate-authority=ca.crt \
     --embed-certs=true \
@@ -121,4 +121,4 @@ for host in node-0 node-1; do
   kubectl config use-context default --kubeconfig=${host}.kubeconfig
 done
 
-cd ../
+cd ~/ || exit

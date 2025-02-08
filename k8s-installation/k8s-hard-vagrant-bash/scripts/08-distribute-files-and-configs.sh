@@ -2,12 +2,10 @@
 
 set -e  # Exit on error
 
-cp kubectl /usr/local/bin/kubectl
-
 # distribute files and binaries to master notes
 for instance in master01 master02; do
   scp \
-    downloads/{kube-apiserver,kube-controller-manager,kube-scheduler,kubectl,etcd,etcdctl} \
+    cluster-files/downloads/{kube-apiserver,kube-controller-manager,kube-scheduler,kubectl,etcd,etcdctl} \
     certs/{ca,kube-apiserver,service-account,etcd-server}.crt \
     certs/{ca,kube-apiserver,service-account,etcd-server}.key \
     kube-configs/{admin,kube-controller-manager,kube-scheduler}.kubeconfig \
@@ -19,7 +17,7 @@ done
 # Distribute files and binaries to worker nodes
 for instance in worker01 worker02; do
   scp \
-    downloads/{kubelet,kube-proxy,kubectl,runc,crictl} \
+    cluster-files/downloads/{kubelet,kube-proxy,kubectl,runc,crictl} \
     downloads/{containerd-2.0.2-linux-amd64.tar.gz,cni-plugins-linux-arm64-v1.3.0.tgz} \
     certs/{ca,${instance}}.crt \
     certs/${instance}.key \

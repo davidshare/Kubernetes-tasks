@@ -67,6 +67,8 @@ Vagrant.configure("2") do |config|
       node.vm.hostname = "master0#{i}"
       node.vm.network :private_network, ip: IP_NW + "#{MASTER_IP_START + i}"
       node.vm.network "forwarded_port", guest: 22, host: "#{2710 + i}"
+      node.vm.provision "initial-setup", type: "shell", path: "scripts/01-setup-vms.sh"
+      node.vm.provision "setup-hosts", type: "shell", path: "scripts/02-setup-hosts.sh"
       node.vm.provision "setup-controller", type: "shell", path: "scripts/09-setup-controllers.sh", run: "never"
     end
   end
@@ -82,7 +84,8 @@ Vagrant.configure("2") do |config|
       node.vm.hostname = "worker0#{i}"
       node.vm.network :private_network, ip: IP_NW + "#{NODE_IP_START + i}"
       node.vm.network "forwarded_port", guest: 22, host: "#{2720 + i}"
-      node.vm.provision "setup-vm", type: "shell", path: "scripts/01-setup-vms.sh", run: "never"
+      node.vm.provision "initial-setup", type: "shell", path: "scripts/01-setup-vms.sh"
+      node.vm.provision "setup-hosts", type: "shell", path: "scripts/02-setup-hosts.sh"
       node.vm.provision "setup-worker", type: "shell", path: "scripts/10-setup-workers.sh", run: "never"
     end
   end
@@ -97,28 +100,17 @@ Vagrant.configure("2") do |config|
     node.vm.hostname = "loadbalancer"
     node.vm.network :private_network, ip: IP_NW + "#{LB_IP_START}"
     node.vm.network "forwarded_port", guest: 22, host: 2732
+    node.vm.provision "initial-setup", type: "shell", path: "scripts/01-setup-vms.sh"
+    node.vm.provision "setup-hosts", type: "shell", path: "scripts/02-setup-hosts.sh"
     node.vm.provision "setup-lb", type: "shell", path: "scripts/11-setup-loadbalancer.sh", run: "never"
   end
 
   # Single trigger to handle the entire sequence
   config.trigger.after :up do |trigger|
     trigger.name = "start-provisioning-sequence"
-    trigger.only_on = "loadbalancer"  # Ensures this only runs once, after all machines are up
+    trigger.only_on = "loadbalancer"
     trigger.run = {
-      inline: <<-SHELL
-        echo "Starting automated provisioning sequence..."
-        
-        # Distribute files and configurations
-        vagrant provision jumpbox --provision-with distribute-files
-        
-        # Provision all other nodes
-        vagrant provision master01 master02 --provision-with setup-controller
-        vagrant provision worker01 worker02 --provision-with setup-vm,setup-worker
-        vagrant provision loadbalancer --provision-with setup-lb
-        
-        # Setup networking and permissions
-        vagrant provision jumpbox --provision-with setup-networking
-      SHELL
+      path: "scripts/13-provision.sh"
     }
-  end
+  end  
 end

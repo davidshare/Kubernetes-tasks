@@ -3,8 +3,8 @@
 set -e  # Exit on error
 
 echo "=================================== Create download directory ================================"
-mkdir -p downloads
-cd downloads || exit
+mkdir -p ./cluster-files/downloads
+cd cluster-files/downloads || exit
 
 echo "=================================== Downloading binaries ================================"
 
@@ -63,4 +63,4 @@ done
 # echo "=================================== after cleanup files ================================"
 # ls -al
 
-cd ../
+cd ~/
