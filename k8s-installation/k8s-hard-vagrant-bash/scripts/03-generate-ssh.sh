@@ -2,10 +2,10 @@
 
 set -e  # Exit on error
 
-source ./00-output-format.sh
+source /home/vagrant/project/scripts/00-output-format.sh
 
 SSH_DIR="/home/vagrant/.ssh"
-KEY_FILE="$SSH_DIR/id_rsa"
+KEY_FILE="$SSH_DIR/jumpbox_key"
 
 # Ensure .ssh directory exists
 task_echo "[Task 1] - create ssh directory if it doesn't exist and set permissions"
@@ -31,4 +31,4 @@ task_echo "[Task 3] - change the permissions of the ssh keys"
 
 # Copy the public key to the shared folder
 task_echo "[Task 4] - copy ssh keys to shared folder"
-cp "$KEY_FILE.pub" /vagrant_data/jumpbox_id_rsa.pub
+cp "$KEY_FILE.pub" /vagrant_data/jumpbox_key.pub

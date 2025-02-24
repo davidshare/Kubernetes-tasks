@@ -2,7 +2,7 @@
 
 set -e  # Exit on error
 
-source ./00-output-format.sh
+source /home/vagrant/project/scripts/00-output-format.sh
 
 {
   IFNAME=$1

@@ -2,15 +2,17 @@
 
 set -e  # Exit on error
 
-source ./00-output-format.sh
+PROJECT_DIR="/home/vagrant/project"
+
+source $PROJECT_DIR/scripts/00-output-format.sh
 
 task_echo "[Task 1] - comment out RANDFILE line in openssl conf"
 sudo sed -i '0,/RANDFILE/{s/RANDFILE/\#&/}' /etc/ssl/openssl.cnf
 
 task_echo "[Task 2] - create and navigate to certs directory"
 {
-  mkdir -p ./cluster-files/certs
-  cd ./cluster-files/certs || exit
+  mkdir -p $PROJECT_DIR/cluster-files/certs
+  cd $PROJECT_DIR/cluster-files/certs || exit
 }
 
 task_echo "[Task 3] - generate certificate authority and root certificate"
@@ -18,7 +20,7 @@ task_echo "[Task 3] - generate certificate authority and root certificate"
   openssl genrsa -out ca.key 4096
   openssl req -x509 -new -sha512 -noenc \
     -key ca.key -days 3653 \
-    -config ../../config/certs-conf/ca.conf \
+    -config $PROJECT_DIR/config/certs-conf/ca.conf \
     -out ca.crt
 }
 
@@ -35,7 +37,7 @@ task_echo "[Task 4] - generate certs for all components"
 
     # Generate CSR using the corresponding configuration file
     openssl req -new -key "${i}.key" -sha256 \
-      -config "../../config/certs-conf/${i}.conf" \
+      -config "$PROJECT_DIR/config/certs-conf/${i}.conf" \
       -out "${i}.csr"
     
     # Sign the CSR using the CA

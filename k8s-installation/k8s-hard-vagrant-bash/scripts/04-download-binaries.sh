@@ -2,12 +2,12 @@
 
 set -e  # Exit on error
 
-source ./00-output-format.sh
+source /home/vagrant/project/scripts/00-output-format.sh
 
 task_echo "[Task 1] - Create download directory"
 {
-  mkdir -p ./cluster-files/downloads
-  cd cluster-files/downloads || exit
+  mkdir -p /home/vagrant/project/cluster-files/downloads
+  cd /home/vagrant/project/cluster-files/downloads || exit
 }
 
 task_echo "[Task 2] - Download binaries"

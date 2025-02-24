@@ -1,8 +1,9 @@
 #!/bin/bash
 
 set -e # exit on error
+PROJECT_DIR=/home/vagrant/project
 
-source ./00-output-format.sh
+source $PROJECT_DIR/scripts/00-output-format.sh
 
 export KUBECONFIG=/etc/kubernetes/admin.kubeconfig
 
@@ -28,7 +29,7 @@ task_echo "[Task 1] - Install Calicos"
 task_echo "[Task 2] - Install coredns"
 {
   echo "Installing CoreDNS..."
-  kubectl apply -f configs/kubernetes-templates/coredns.yaml
+  kubectl apply -f $PROJECT_DIR/configs/kubernetes-templates/coredns.yaml
 
   # Verify CoreDNS is running
   echo "Waiting for CoreDNS pods to be ready..."

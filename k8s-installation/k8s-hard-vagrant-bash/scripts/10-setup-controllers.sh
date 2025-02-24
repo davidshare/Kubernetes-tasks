@@ -2,7 +2,7 @@
 
 set -e  # Exit on error
 
-source ./00-output-format.sh
+source $PROJECT_DIR/scripts/00-output-format.sh
 
 # Disable interactive prompts
 export DEBIAN_FRONTEND=noninteractive

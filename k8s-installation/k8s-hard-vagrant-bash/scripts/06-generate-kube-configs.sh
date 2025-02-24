@@ -2,14 +2,15 @@
 
 set -e  # Exit on error
 
-source ./00-output-format.sh
+PROJECT_DIR='/home/vagrant/project'
+source /home/vagrant/project/scripts/00-output-format.sh
 
 LOADBALANCER_ADDRESS=192.168.56.30
 
 task_echo "[Task 1] - add kubectl binary to path"
-cp ./cluster-files/downloads/kubectl /usr/local/bin/
+cp $PROJECT_DIR/cluster-files/downloads/kubectl /usr/local/bin/
 
-cd ./cluster-files/certs || exit
+cd $PROJECT_DIR/cluster-files/certs || exit
 
 task_echo "[Task 2] - Generate Kube proxy Config"
 {
@@ -128,4 +129,4 @@ task_echo "[Task 6] - Generate worker01 and worker02 Config"
   done
 }
 
-cd ~/ || exit
+cd $PROJECT_DIR || exit

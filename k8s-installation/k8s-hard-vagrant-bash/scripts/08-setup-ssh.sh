@@ -2,11 +2,11 @@
 
 set -e # exit on error
 
-source ./00-output-format.sh
+source /home/vagrant/project/scripts/00-output-format.sh
 
 SSH_DIR="/home/vagrant/.ssh"
 AUTHORIZED_KEYS="$SSH_DIR/authorized_keys"
-PUB_KEY_FILE="/vagrant_data/jumpbox_id_rsa.pub"
+PUB_KEY_FILE="/vagrant_data/jumpbox_key.pub"
 
 # Ensure .ssh directory exists
 task_echo "[Task 1] - Create ssh directory if it doesn't exist"

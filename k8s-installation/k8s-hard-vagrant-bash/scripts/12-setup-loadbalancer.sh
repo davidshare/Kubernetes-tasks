@@ -2,7 +2,9 @@
 
 set -e
 
-source ./00-output-format.sh
+PROJECT_DIR=/home/vagrant/project
+
+source $PROJECT_DIR/scripts/00-output-format.sh
 
 task_echo "[Task 1] - Install HAPROXY"
 sudo apt-get install -y haproxy
