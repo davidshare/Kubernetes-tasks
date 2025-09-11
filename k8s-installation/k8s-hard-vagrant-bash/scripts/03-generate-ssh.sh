@@ -27,6 +27,7 @@ task_echo "[Task 3] - change the permissions of the ssh keys"
 {
     chmod 600 "$KEY_FILE"
     chmod 644 "$KEY_FILE.pub"
+    chown vagrant:vagrant "$KEY_FILE" "$KEY_FILE.pub"
 }
 
 # Copy the public key to the shared folder

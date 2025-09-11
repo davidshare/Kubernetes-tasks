@@ -1,2 +1,8 @@
 .vscode
 .vagrant
+.bash_history
+.cache/
+.ssh/
+cluster-files/
+vagrant.log
+

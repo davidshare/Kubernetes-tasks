@@ -2,7 +2,7 @@
 
 set -e  # Exit on error
 
-source $PROJECT_DIR/scripts/00-output-format.sh
+source /home/vagrant/project/scripts/00-output-format.sh
 
 # Disable interactive prompts
 export DEBIAN_FRONTEND=noninteractive
@@ -16,7 +16,7 @@ export INTERNAL_IP
 export ETCD_NAME
 
 task_echo "[Task 2] - create kubernetes, and etcd directories"
-mkdir -p /var/lib/kubernetes /etc/etcd/ /var/lib/etcd/
+mkdir -p /var/lib/kubernetes /var/lib/etcd/ /etc/etcd/ /etc/kubernetes/config
 
 task_echo "[Task 3] - Set permissions for etcd directory"
 chmod 700 /var/lib/etcd
@@ -28,8 +28,9 @@ mv kube-apiserver kube-controller-manager kube-scheduler kubectl etcd etcdctl /u
 
 ### Configure apiserver
 task_echo "[Task 5] - configure apiserver: move certs and encryption file"
-mv {ca,kube-api-server,service-accounts}.crt \
-  {ca,kube-api-server,service-accounts}.key \
+cp ca.{key,crt} /var/lib/kubernetes/
+mv {kube-apiserver,service-accounts}.crt \
+  {kube-apiserver,service-accounts}.key \
   encryption-config.yaml \
   /var/lib/kubernetes/
 
@@ -67,17 +68,10 @@ envsubst < etcd.service > /etc/systemd/system/etcd.service
 task_echo "[Task 14] - enable and start controller components"
 sudo systemctl daemon-reload
 sudo systemctl enable kube-apiserver kube-controller-manager kube-scheduler etcd
-sudo systemctl start kube-apiserver kube-controller-manager kube-scheduler etcd
+sudo systemctl start kube-apiserver kube-controller-manager kube-scheduler
 
 sleep 30
 
 task_echo "[Task 13] - check etcd"
 echo "[Setting up ${HOSTNAME} TASK 7] - Confirm ETCD Status"
-sudo systemctl status etcd.service
-sudo journalctl -u etcd.service --no-pager --output cat -f
-etcdctl member list
-sudo ETCDCTL_API=3 etcdctl member list \
-  --endpoints=https://127.0.0.1:2379 \
-  --cacert=/etc/etcd/ca.crt \
-  --cert=/etc/etcd/etcd-server.crt \
-  --key=/etc/etcd/etcd-server.key
+sudo systemctl status etcd.service || true

@@ -2,7 +2,7 @@
 
 set -e # exit on error
 
-source ./scripts/00-output-format.sh
+source /home/vagrant/project/scripts/00-output-format.sh
 
 task_echo "[Task 1] - create neccessary directories for binaries and plugins"
 mkdir -p /var/lib/{kubelet,kubernetes/,kube-proxy/} /etc/cni/net.d/ \
