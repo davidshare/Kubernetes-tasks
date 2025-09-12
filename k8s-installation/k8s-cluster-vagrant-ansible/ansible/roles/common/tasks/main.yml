@@ -1,0 +1,5 @@
+- name: Setup system prerequisites
+  include_tasks: setup_prerequisites.yml
+
+- name: Configure firewall
+  include_tasks: configure_firewall.yml
