@@ -1,0 +1,13 @@
+[Unit]
+Description=etcd
+Documentation=https://etcd.io/docs/
+After=network.target
+
+[Service]
+EnvironmentFile={{ etcd_config }}
+ExecStart={{ etcd_binary_dest }} $ETCD_ARGS
+Restart=on-failure
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

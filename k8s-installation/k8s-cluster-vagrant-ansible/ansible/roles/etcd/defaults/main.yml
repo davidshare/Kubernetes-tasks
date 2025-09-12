@@ -1,0 +1,5 @@
+# etcd paths
+etcd_binary_dest: /usr/local/bin/etcd
+etcdctl_binary_dest: /usr/local/bin/etcdctl
+etcd_config: /etc/etcd/etcd.conf
+etcd_service: /etc/systemd/system/etcd.service
