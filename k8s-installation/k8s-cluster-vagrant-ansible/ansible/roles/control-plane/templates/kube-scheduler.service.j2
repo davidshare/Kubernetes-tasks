@@ -1,0 +1,13 @@
+[Unit]
+Description=Kubernetes Scheduler
+Documentation=https://kubernetes.io/docs/
+After=network.target
+
+[Service]
+ExecStart={{ scheduler_binary_dest }} \
+    {% for arg in kube_scheduler_args %} {{ arg }} {% endfor %}
+Restart=on-failure
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

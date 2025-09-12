@@ -1,0 +1,20 @@
+- name: Copy kube-controller-manager binary
+  ansible.builtin.copy:
+    src: "{{ kube_controller_manager_binary }}"
+    dest: "{{ controller_manager_binary_dest }}"
+    mode: "0755"
+
+- name: Apply kube-controller-manager service template
+  ansible.builtin.template:
+    src: kube-controller-manager.service.j2
+    dest: "{{ controller_manager_service }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart kube-controller-manager
+
+- name: Ensure kube-controller-manager service is enabled and started
+  ansible.builtin.systemd:
+    name: kube-controller-manager
+    enabled: yes
+    state: started
