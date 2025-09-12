@@ -1,0 +1,15 @@
+---
+# Control plane specific settings
+apiserver_count: 3
+etcd_initial_cluster: "master1=https://192.168.56.11:2380,master2=https://192.168.56.12:2380,master3=https://192.168.56.13:2380"
+etcd_initial_cluster_token: "k8s-etcd-cluster"
+etcd_initial_cluster_state: "new"
+
+# API server endpoints
+kube_apiserver_addresses:
+  - "https://192.168.56.11:6443"
+  - "https://192.168.56.12:6443"
+  - "https://192.168.56.13:6443"
+
+# Load balancer endpoint
+kube_apiserver_loadbalancer: "https://192.168.56.30:6443"

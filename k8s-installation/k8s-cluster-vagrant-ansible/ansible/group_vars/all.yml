@@ -1,0 +1,41 @@
+---
+# Latest Kubernetes version (as of 2024)
+kubernetes_version: "1.34.0"
+etcd_version: "3.6.4"
+cni_version: "1.4.1"
+crictl_version: "1.34.0"
+
+# Network configuration (aligned with your Vagrant setup)
+cluster_cidr: "10.200.0.0/16"
+service_cidr: "10.32.0.0/24"
+cluster_dns: "10.32.0.10"
+cluster_domain: "cluster.local"
+
+# Certificate authorities
+ca_cert_path: "/etc/kubernetes/pki/ca.crt"
+ca_key_path: "/etc/kubernetes/pki/ca.key"
+
+# Directories
+kubernetes_dir: "/etc/kubernetes"
+kubernetes_bin_dir: "/usr/local/bin"
+kubernetes_config_dir: "/etc/kubernetes/config"
+kubernetes_ssl_dir: "/etc/kubernetes/ssl"
+kubernetes_pki_dir: "/etc/kubernetes/pki"
+
+# Container runtime (containerd) - latest version
+containerd_version: "2.14"
+
+# Network interface (aligned with Vagrant private network)
+cluster_interface: "enp0s8"
+
+# Load balancer configuration
+load_balancer_ip: "192.168.56.30"
+load_balancer_port: "6443"
+
+# Resource constraints based on your Vagrant setup
+master_memory_mb: 3072 # 3GB
+master_cpus: 2
+worker_memory_mb: 2048 # 2GB
+worker_cpus: 1
+lb_memory_mb: 512
+lb_cpus: 1
