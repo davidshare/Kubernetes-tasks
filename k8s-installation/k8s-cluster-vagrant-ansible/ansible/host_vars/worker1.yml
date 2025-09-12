@@ -1,0 +1,4 @@
+# Worker node-specific settings
+node_name: worker1
+kubelet_kubeconfig: "{{ config_dir }}/kubelet.kubeconfig"
+kube_proxy_kubeconfig: "{{ config_dir }}/kube-proxy.kubeconfig"

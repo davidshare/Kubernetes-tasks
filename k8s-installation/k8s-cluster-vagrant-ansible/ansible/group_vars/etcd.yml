@@ -1,0 +1,18 @@
+# etcd settings
+etcd_data_dir: /var/lib/etcd
+etcd_args:
+  - --name={{ inventory_hostname }}
+  - --data-dir={{ etcd_data_dir }}
+  - --client-cert-auth=true
+  - --cert-file={{ pki_dir }}/etcd.crt
+  - --key-file={{ pki_dir }}/etcd.key
+  - --trusted-ca-file={{ pki_dir }}/ca.crt
+  - --peer-cert-file={{ pki_dir }}/etcd-peer.crt
+  - --peer-key-file={{ pki_dir }}/etcd-peer.key
+  - --peer-trusted-ca-file={{ pki_dir }}/ca.crt
+  - --initial-cluster=master1=https://192.168.56.11:2380,master2=https://192.168.56.12:2380,master3=https://192.168.56.13:2380
+  - --initial-cluster-state=new
+  - --listen-client-urls=https://0.0.0.0:2379
+  - --advertise-client-urls=https://{{ ansible_host }}:2379
+  - --listen-peer-urls=https://0.0.0.0:2380
+  - --initial-advertise-peer-urls=https://{{ ansible_host }}:2380
