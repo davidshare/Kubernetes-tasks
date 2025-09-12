@@ -1,0 +1,6 @@
+# Container runtime paths
+containerd_binary_dest: /usr/local/bin/containerd
+runc_binary_dest: /usr/local/bin/runc
+containerd_config: /etc/containerd/config.toml
+containerd_service: /etc/systemd/system/containerd.service
+containerd_package: containerd.io
