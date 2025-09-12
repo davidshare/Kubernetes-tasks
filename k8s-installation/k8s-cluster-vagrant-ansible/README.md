@@ -1,4 +1,4 @@
-# 3-Node Kubernetes Cluster using VirtualBox and Vagrant, Provisioned with CloudInit
+# 5-Node Kubernetes Cluster using VirtualBox and Vagrant, Provisioned with CloudInit
 
 ## Description
 
@@ -8,17 +8,25 @@ This project sets up a 3-node Kubernetes cluster using Vagrant and VirtualBox. T
 
 For this project, we will need the following:
 
-### Virtual or Physical Machines
+### Cluster setup
 
-Our cluster will consist of 1 master and 2 worker nodes. A machine for a jump box, and another for a a loadbalancer.
+| Name         | Description              | CPU | RAM   | Storage | Ip            | Forwarded Port |
+| ------------ | ------------------------ | --- | ----- | ------- | ------------- | -------------- |
+| jumpbox      | Administration host      | 1   | 512MB | 10GB    | 192.168.56.40 | 2731           |
+| master1      | Kubernetes Master node 1 | 2   | 3GB   | 20GB    | 192.168.56.11 | 2711           |
+| master2      | Kubernetes Master node 2 | 2   | 3GB   | 20GB    | 192.168.56.12 | 2712           |
+| master3      | Kubernetes Master node 3 | 2   | 3GB   | 20GB    | 192.168.56.13 | 2713           |
+| worker1      | Kubernetes worker node 1 | 1   | 2GB   | 20GB    | 192.168.56.21 | 2721           |
+| worker2      | Kubernetes worker node 2 | 1   | 2GB   | 20GB    | 192.168.56.22 | 2722           |
+| loadbalancer | Kubernetes loadbalancer  | 1   | 512MB | 5GB     | 192.168.56.30 | 2732           |
 
-| Name         | Description              | CPU | RAM   | Storage | Ip   | Forwarded Port |
-| ------------ | ------------------------ | --- | ----- | ------- | ---- | -------------- |
-| jumpbox      | Administration host      | 1   | 512MB | 10GB    | 10GB | 10GB           |
-| server       | Kubernetes Master node   | 1   | 2GB   | 20GB    | 10GB | 10GB           |
-| node-0       | Kubernetes worker node 1 | 1   | 2GB   | 20GB    | 10GB | 10GB           |
-| node-1       | Kubernetes worker node 2 | 1   | 2GB   | 20GB    | 10GB | 10GB           |
-| Loadbalancer | Kubernetes loadbalancer  | 1   | 512MB | 5GB     | 10GB | 10GB           |
+#### Notes
+
+CPU and RAM: Derived from the Vagrantfile (RESOURCES["master"]["ram"] = 3072, RESOURCES["worker"]["ram"] = 2048, LB_RAM = 512, 2 CPUs for masters, 1 CPU for workers/loadbalancer/jumpbox).
+Storage: Estimated as 10GB for jumpbox (lightweight admin tasks), 20GB for masters/workers (for Kubernetes binaries, etcd, containerd), and 5GB for loadbalancer (minimal HAProxy needs). Adjustable in VirtualBox if needed.
+IP Addresses: Based on IP_NW = "192.168.56." with offsets (MASTER_IP_START = 10, NODE_IP_START = 20, LB_IP_START = 30, JUMP_IP_START = 40).
+Forwarded Ports: Match Vagrantfile settings (2711–2713 for masters, 2721–2722 for workers, 2731 for jumpbox, 2732 for loadbalancer).
+Description: Reflects roles in your "Kubernetes the Hard Way" setup.
 
 ### Operating System
 
@@ -36,32 +44,3 @@ Ensure you have the following versions installed:
 The base box image that will be used for all nodes is:
 
 - **ubuntu/jammy64** (Ubuntu 22.04)
-
-### Provisioner
-
-We will use **CloudInit** to automatically provision the machines. This will handle tasks such as:
-
-- Installing dependencies (Docker, kubeadm, kubectl, and kubelet)
-- Configuring networking and SSH access
-- Setting up the container runtime (containerd)
-
-### Networking
-
-- The machines will use **private networking** (host-only or NAT) for communication.
-- Each machine will have a specific static IP address assigned within the private network range.
-
-### Tools and Dependencies
-
-The following tools will be installed and configured on each machine:
-
-- **Kubeadm**, **kubectl**, and **kubelet** for managing the Kubernetes cluster.
-- **Container runtime**: containerd will be installed as the default runtime for Kubernetes.
-- **SSH access** will be configured for connecting to the machines from the jumpbox.
-
-### Kubernetes Version
-
-The cluster will be running **Kubernetes 1.31**, which will be installed via `kubeadm` during the provisioning process.
-
----
-
-Next: [Setting up the Jumpbox](02-jumpbox.md)

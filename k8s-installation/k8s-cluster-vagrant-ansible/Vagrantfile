@@ -20,7 +20,7 @@ RESOURCES = {
 }
 
 # Define the number of master and worker nodes
-NUM_MASTER_NODES = 2
+NUM_MASTER_NODES = 3  # Changed to 3 masters
 NUM_WORKER_NODE = 2
 LB_RAM = 512  # Load balancer gets 512MB of RAM
 LB_CPU = 1    # Load balancer gets 1 CPU
@@ -37,10 +37,6 @@ Vagrant.configure("2") do |config|
   config.vm.boot_timeout = 900
   config.vm.synced_folder "/media/davidshare/Tersu", "/vagrant_data"
   config.vm.box_check_update = false
-
-  # # Set up common SSH configuration
-  # config.ssh.username = "ubuntu"  # Set the default user to ubuntu
-  # config.ssh.insert_key = false   # Prevent Vagrant from overwriting the key
 
   # Provision Jumpbox Node
   config.vm.define "jumpbox" do |node|
