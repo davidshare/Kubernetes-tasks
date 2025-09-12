@@ -1,0 +1,5 @@
+# HAProxy paths and settings
+haproxy_binary: /usr/sbin/haproxy
+haproxy_config_dest: "{{ haproxy_config }}"
+haproxy_service: /etc/systemd/system/haproxy.service
+haproxy_package: haproxy
