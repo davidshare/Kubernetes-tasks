@@ -1,0 +1,18 @@
+- name: Generate CA certificate and key
+  ansible.builtin.shell: "{{ cfssl_binary }} gencert -initca {{ ca_csr }} | {{ cfssljson_binary }} -bare ca"
+  args:
+    chdir: "{{ role_path }}/files"
+    creates: "{{ role_path }}/files/ca.pem"
+  when: not ansible_check_mode
+
+- name: Copy CA certificate to node
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/ca.pem"
+    dest: "{{ ca_pem }}"
+    mode: "0644"
+
+- name: Copy CA key to node
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/ca-key.pem"
+    dest: "{{ ca_key_pem }}"
+    mode: "0600"
