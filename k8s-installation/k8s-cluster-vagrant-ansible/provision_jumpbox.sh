@@ -113,11 +113,7 @@ task_echo "[Task 7] - List downloaded binaries"
 task_echo "[Task 8] - Run Ansible playbooks"
 {
     cd /vagrant_data/ansible
-    for playbook in 00-prerequisites.yml 01-certificates.yml 02-etcd-cluster.yml 03-control-plane.yml \
-                    04-loadbalancer.yml 05-container-runtime.yml 06-cni.yml 07-kubelet.yml \
-                    08-kube-proxy.yml 09-bootstrap.yml 10-networking.yml 11-hardening.yml; do
-        ansible-playbook -i inventory/hosts.ini playbooks/$playbook
-    done
+    ansible-playbook -i inventory/hosts.ini playbooks/master.yml
 }
 
 echo "Jumpbox provisioning complete."
