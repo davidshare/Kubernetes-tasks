@@ -1,0 +1,2 @@
+- name: Configure containerd
+  include_tasks: configure_containerd.yml

@@ -1,0 +1,18 @@
+- name: Generate kubelet certificate and key
+  ansible.builtin.shell: "{{ cfssl_binary }} gencert -ca={{ role_path }}/files/ca.pem -ca-key={{ role_path }}/files/ca-key.pem -config={{ ca_config }} -profile={{ ca_profile }} {{ kubelet_csr }} | {{ cfssljson_binary }} -bare kubelet"
+  args:
+    chdir: "{{ role_path }}/files"
+    creates: "{{ role_path }}/files/kubelet.pem"
+  when: not ansible_check_mode
+
+- name: Copy kubelet certificate to node
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/kubelet.pem"
+    dest: "{{ kubelet_pem }}"
+    mode: "0644"
+
+- name: Copy kubelet key to node
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/kubelet-key.pem"
+    dest: "{{ kubelet_key_pem }}"
+    mode: "0600"

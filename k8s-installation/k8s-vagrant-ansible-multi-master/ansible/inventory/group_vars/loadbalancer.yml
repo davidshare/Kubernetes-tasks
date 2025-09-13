@@ -1,0 +1,10 @@
+# HAProxy settings
+haproxy_port: "{{ api_server_port }}"
+haproxy_backend_servers:
+  - name: master1
+    address: 192.168.56.11:6443
+  - name: master2
+    address: 192.168.56.12:6443
+  - name: master3
+    address: 192.168.56.13:6443
+haproxy_config: /etc/haproxy/haproxy.cfg

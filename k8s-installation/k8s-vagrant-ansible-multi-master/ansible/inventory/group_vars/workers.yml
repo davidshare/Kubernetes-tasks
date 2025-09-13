@@ -1,0 +1,10 @@
+# Kubelet settings
+kubelet_args:
+  - --config={{ config_dir }}/kubelet-config.yaml
+  - --kubeconfig={{ config_dir }}/kubelet.kubeconfig
+  - --tls-cert-file={{ pki_dir }}/kubelet.crt
+  - --tls-private-key-file={{ pki_dir }}/kubelet.key
+
+# Kube-proxy settings
+kube_proxy_args:
+  - --config={{ config_dir }}/kube-proxy-config.yaml

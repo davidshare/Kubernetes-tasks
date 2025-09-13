@@ -1,0 +1,4 @@
+- name: Restart kube-apiserver
+  ansible.builtin.systemd:
+    name: kube-apiserver
+    state: restarted

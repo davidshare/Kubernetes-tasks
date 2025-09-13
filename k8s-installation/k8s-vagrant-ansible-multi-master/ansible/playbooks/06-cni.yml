@@ -1,0 +1,5 @@
+- name: Configure Flannel CNI
+  hosts: masters
+  become: yes
+  roles:
+    - cni

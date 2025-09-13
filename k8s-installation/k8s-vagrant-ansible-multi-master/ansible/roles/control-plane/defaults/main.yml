@@ -1,0 +1,8 @@
+# Control plane paths
+apiserver_binary_dest: /usr/local/bin/kube-apiserver
+controller_manager_binary_dest: /usr/local/bin/kube-controller-manager
+scheduler_binary_dest: /usr/local/bin/kube-scheduler
+apiserver_service: /etc/systemd/system/kube-apiserver.service
+controller_manager_service: /etc/systemd/system/kube-controller-manager.service
+scheduler_service: /etc/systemd/system/kube-scheduler.service
+encryption_config: "{{ config_dir }}/encryption-config.yaml"

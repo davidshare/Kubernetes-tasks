@@ -1,0 +1,4 @@
+- name: Restart kube-scheduler
+  ansible.builtin.systemd:
+    name: kube-scheduler
+    state: restarted

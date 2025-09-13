@@ -1,0 +1,5 @@
+- name: Configure kube-proxy
+  hosts: workers
+  become: yes
+  roles:
+    - kube-proxy

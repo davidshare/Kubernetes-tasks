@@ -1,0 +1,13 @@
+[Unit]
+Description=Kubernetes Controller Manager
+Documentation=https://kubernetes.io/docs/
+After=network.target
+
+[Service]
+ExecStart={{ controller_manager_binary_dest }} \
+    {% for arg in kube_controller_manager_args %} {{ arg }} {% endfor %}
+Restart=on-failure
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

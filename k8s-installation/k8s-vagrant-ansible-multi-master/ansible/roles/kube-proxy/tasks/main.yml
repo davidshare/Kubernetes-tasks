@@ -1,0 +1,2 @@
+- name: Configure kube-proxy
+  include_tasks: configure_kube_proxy.yml

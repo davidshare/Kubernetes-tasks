@@ -1,0 +1,2 @@
+- name: Configure bootstrap
+  include_tasks: configure_bootstrap.yml

@@ -1,0 +1,5 @@
+- name: Generate and distribute certificates
+  hosts: jumpbox
+  become: yes
+  roles:
+    - certificates

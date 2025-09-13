@@ -1,0 +1,109 @@
+# Define how much memory your computer has in GB
+RAM_SIZE = 16  # Your available usable RAM in GB
+CPU_CORES = 8  # Your available CPU cores
+
+# Internal network prefix for the VM network
+IP_NW = "192.168.56."
+
+# Calculate resource amounts
+# Master and worker nodes have 2GB RAM max, per user preference
+RESOURCES = {
+  "master" => {
+    "ram" => 2048,  # Fixed to 2GB
+    "cpu" => 2,     # 2 CPUs for masters
+    "disk" => 51200 # 50GB for etcd data
+  },
+  "worker" => {
+    "ram" => 2048,  # Fixed to 2GB
+    "cpu" => 2,     # 2 CPUs
+    "disk" => 30720 # 30GB for workers
+  },
+  "loadbalancer" => {
+    "ram" => 512,   # 512MB for load balancer
+    "cpu" => 1,     # 1 CPU
+    "disk" => 20480 # 20GB
+  },
+  "jumpbox" => {
+    "ram" => 1024,  # 1GB
+    "cpu" => 1,     # 1 CPU
+    "disk" => 20480 # 20GB
+  }
+}
+
+# Define the number of master and worker nodes
+NUM_MASTER_NODES = 3
+NUM_WORKER_NODES = 2
+
+# Host address start points
+MASTER_IP_START = 10
+NODE_IP_START = 20
+LB_IP_START = 30
+JUMP_IP_START = 40
+
+# Vagrant configuration
+Vagrant.configure("2") do |config|
+  config.vm.box = "ubuntu/jammy64"
+  config.vm.boot_timeout = 1200
+  config.vm.synced_folder "./ansible", "/vagrant_data/ansible"
+  config.vm.box_check_update = false
+
+  # Common provisioning for all nodes
+  config.vm.provision "shell", path: "/vagrant_data/ansible/provision_common.sh"
+
+  # Provision Jumpbox Node
+  config.vm.define "jumpbox" do |node|
+    node.vm.provider "virtualbox" do |vb|
+      vb.name = "jumpbox"
+      vb.memory = RESOURCES["jumpbox"]["ram"]
+      vb.cpus = RESOURCES["jumpbox"]["cpu"]
+      vb.customize ['modifyhd', :id, '--resize', RESOURCES["jumpbox"]["disk"]]
+    end
+    node.vm.hostname = "jumpbox"
+    node.vm.network :private_network, ip: IP_NW + "#{JUMP_IP_START}"
+    node.vm.network "forwarded_port", guest: 22, host: 2731
+    node.vm.provision "shell", path: "/vagrant_data/ansible/provision_jumpbox.sh"
+  end
+
+  # Provision Master Nodes
+  (1..NUM_MASTER_NODES).each do |i|
+    config.vm.define "master#{i}" do |node|
+      node.vm.provider "virtualbox" do |vb|
+        vb.name = "master#{i}"
+        vb.memory = RESOURCES["master"]["ram"]
+        vb.cpus = RESOURCES["master"]["cpu"]
+        vb.customize ['modifyhd', :id, '--resize', RESOURCES["master"]["disk"]]
+      end
+      node.vm.hostname = "master#{i}"
+      node.vm.network :private_network, ip: IP_NW + "#{MASTER_IP_START + i}"
+      node.vm.network "forwarded_port", guest: 22, host: "#{2710 + i}"
+    end
+  end
+
+  # Provision Worker Nodes
+  (1..NUM_WORKER_NODES).each do |i|
+    config.vm.define "worker#{i}" do |node|
+      node.vm.provider "virtualbox" do |vb|
+        vb.name = "worker#{i}"
+        vb.memory = RESOURCES["worker"]["ram"]
+        vb.cpus = RESOURCES["worker"]["cpu"]
+        vb.customize ['modifyhd', :id, '--resize', RESOURCES["worker"]["disk"]]
+      end
+      node.vm.hostname = "worker#{i}"
+      node.vm.network :private_network, ip: IP_NW + "#{NODE_IP_START + i}"
+      node.vm.network "forwarded_port", guest: 22, host: "#{2720 + i}"
+    end
+  end
+
+  # Provision Load Balancer Node
+  config.vm.define "loadbalancer" do |node|
+    node.vm.provider "virtualbox" do |vb|
+      vb.name = "loadbalancer"
+      vb.memory = RESOURCES["loadbalancer"]["ram"]
+      vb.cpus = RESOURCES["loadbalancer"]["cpu"]
+      vb.customize ['modifyhd', :id, '--resize', RESOURCES["loadbalancer"]["disk"]]
+    end
+    node.vm.hostname = "loadbalancer"
+    node.vm.network :private_network, ip: IP_NW + "#{LB_IP_START}"
+    node.vm.network "forwarded_port", guest: 22, host: 2732
+  end
+end

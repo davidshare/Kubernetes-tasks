@@ -1,0 +1,5 @@
+- name: Configure kubelet
+  hosts: workers
+  become: yes
+  roles:
+    - kubelet

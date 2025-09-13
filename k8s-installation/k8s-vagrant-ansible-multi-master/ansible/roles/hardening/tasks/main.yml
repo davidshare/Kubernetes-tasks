@@ -1,0 +1,14 @@
+- name: Remove bootstrap tokens
+  include_tasks: remove_bootstrap.yml
+
+- name: Configure audit policy
+  include_tasks: configure_audit.yml
+
+- name: Configure network policies
+  include_tasks: network_policies.yml
+
+- name: Configure RBAC
+  include_tasks: configure_rbac.yml
+
+- name: Configure etcd backup
+  include_tasks: etcd_backup.yml

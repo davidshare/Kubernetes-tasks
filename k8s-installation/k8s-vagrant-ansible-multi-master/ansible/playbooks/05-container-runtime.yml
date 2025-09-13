@@ -1,0 +1,5 @@
+- name: Configure container runtime
+  hosts: masters,workers
+  become: yes
+  roles:
+    - container-runtime

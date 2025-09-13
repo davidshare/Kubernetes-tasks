@@ -1,0 +1,12 @@
+- name: Apply audit policy
+  ansible.builtin.copy:
+    content: |
+      apiVersion: audit.k8s.io/v1
+      kind: Policy
+      rules:
+      - level: Metadata
+    dest: "{{ audit_policy }}"
+    owner: root
+    group: root
+    mode: "0644"
+  when: inventory_hostname in groups['masters']

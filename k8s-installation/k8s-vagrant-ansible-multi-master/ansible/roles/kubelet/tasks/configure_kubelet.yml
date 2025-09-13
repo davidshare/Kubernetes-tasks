@@ -1,0 +1,29 @@
+- name: Copy kubelet binary
+  ansible.builtin.copy:
+    src: "{{ kubelet_binary }}"
+    dest: "{{ kubelet_binary_dest }}"
+    mode: "0755"
+
+- name: Apply kubelet configuration
+  ansible.builtin.template:
+    src: kubelet-config.yaml.j2
+    dest: "{{ kubelet_config }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart kubelet
+
+- name: Apply kubelet service template
+  ansible.builtin.template:
+    src: kubelet.service.j2
+    dest: "{{ kubelet_service }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart kubelet
+
+- name: Ensure kubelet service is enabled and started
+  ansible.builtin.systemd:
+    name: kubelet
+    enabled: yes
+    state: started

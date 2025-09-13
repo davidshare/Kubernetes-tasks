@@ -1,0 +1,5 @@
+- name: Deploy CoreDNS
+  hosts: masters
+  become: yes
+  roles:
+    - networking

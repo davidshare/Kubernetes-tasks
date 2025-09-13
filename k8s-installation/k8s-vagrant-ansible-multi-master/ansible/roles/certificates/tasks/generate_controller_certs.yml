@@ -1,0 +1,37 @@
+- name: Generate kube-controller-manager certificate and key
+  ansible.builtin.shell: "{{ cfssl_binary }} gencert -ca={{ role_path }}/files/ca.pem -ca-key={{ role_path }}/files/ca-key.pem -config={{ ca_config }} -profile={{ ca_profile }} {{ kube_controller_manager_csr }} | {{ cfssljson_binary }} -bare kube-controller-manager"
+  args:
+    chdir: "{{ role_path }}/files"
+    creates: "{{ role_path }}/files/kube-controller-manager.pem"
+  when: not ansible_check_mode
+
+- name: Copy kube-controller-manager certificate to node
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/kube-controller-manager.pem"
+    dest: "{{ kube_controller_manager_pem }}"
+    mode: "0644"
+
+- name: Copy kube-controller-manager key to node
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/kube-controller-manager-key.pem"
+    dest: "{{ kube_controller_manager_key_pem }}"
+    mode: "0600"
+
+- name: Generate kube-scheduler certificate and key
+  ansible.builtin.shell: "{{ cfssl_binary }} gencert -ca={{ role_path }}/files/ca.pem -ca-key={{ role_path }}/files/ca-key.pem -config={{ ca_config }} -profile={{ ca_profile }} {{ kube_scheduler_csr }} | {{ cfssljson_binary }} -bare kube-scheduler"
+  args:
+    chdir: "{{ role_path }}/files"
+    creates: "{{ role_path }}/files/kube-scheduler.pem"
+  when: not ansible_check_mode
+
+- name: Copy kube-scheduler certificate to node
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/kube-scheduler.pem"
+    dest: "{{ kube_scheduler_pem }}"
+    mode: "0644"
+
+- name: Copy kube-scheduler key to node
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/kube-scheduler-key.pem"
+    dest: "{{ kube_scheduler_key_pem }}"
+    mode: "0600"

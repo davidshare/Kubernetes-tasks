@@ -1,0 +1,28 @@
+- name: Copy kube-apiserver binary
+  ansible.builtin.copy:
+    src: "{{ kube_apiserver_binary }}"
+    dest: "{{ apiserver_binary_dest }}"
+    mode: "0755"
+
+- name: Apply kube-apiserver service template
+  ansible.builtin.template:
+    src: kube-apiserver.service.j2
+    dest: "{{ apiserver_service }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart kube-apiserver
+
+- name: Apply encryption configuration
+  ansible.builtin.template:
+    src: encryption-config.yaml.j2
+    dest: "{{ encryption_config }}"
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Ensure kube-apiserver service is enabled and started
+  ansible.builtin.systemd:
+    name: kube-apiserver
+    enabled: yes
+    state: started

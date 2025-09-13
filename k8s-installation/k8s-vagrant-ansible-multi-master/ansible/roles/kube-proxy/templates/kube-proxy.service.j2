@@ -1,0 +1,13 @@
+[Unit]
+Description=Kubernetes Kube-Proxy
+Documentation=https://kubernetes.io/docs/
+After=network.target
+
+[Service]
+ExecStart={{ kube_proxy_binary_dest }} \
+    {% for arg in kube_proxy_args %} {{ arg }} {% endfor %}
+Restart=on-failure
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

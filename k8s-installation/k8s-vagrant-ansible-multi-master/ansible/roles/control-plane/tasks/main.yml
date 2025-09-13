@@ -1,0 +1,8 @@
+- name: Install kube-apiserver
+  include_tasks: install_apiserver.yml
+
+- name: Install kube-controller-manager
+  include_tasks: install_controller_manager.yml
+
+- name: Install kube-scheduler
+  include_tasks: install_scheduler.yml

@@ -1,0 +1,15 @@
+[Unit]
+Description=Kubernetes Kubelet
+Documentation=https://kubernetes.io/docs/
+After=containerd.service
+Requires=containerd.service
+
+[Service]
+ExecStart={{ kubelet_binary_dest }} \
+    --node-name={{ node_name }} \
+    {% for arg in kubelet_args %} {{ arg }} {% endfor %}
+Restart=on-failure
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,20 @@
+- name: Copy kube-scheduler binary
+  ansible.builtin.copy:
+    src: "{{ kube_scheduler_binary }}"
+    dest: "{{ scheduler_binary_dest }}"
+    mode: "0755"
+
+- name: Apply kube-scheduler service template
+  ansible.builtin.template:
+    src: kube-scheduler.service.j2
+    dest: "{{ scheduler_service }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart kube-scheduler
+
+- name: Ensure kube-scheduler service is enabled and started
+  ansible.builtin.systemd:
+    name: kube-scheduler
+    enabled: yes
+    state: started

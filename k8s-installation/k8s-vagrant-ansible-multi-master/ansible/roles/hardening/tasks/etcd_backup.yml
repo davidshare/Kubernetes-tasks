@@ -1,0 +1,31 @@
+- name: Ensure etcd backup directory exists
+  ansible.builtin.file:
+    path: "{{ etcd_backup_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+  when: inventory_hostname in groups['etcd']
+
+- name: Create etcd backup script
+  ansible.builtin.copy:
+    content: |
+      #!/bin/bash
+      ETCDCTL_API=3 {{ etcdctl_binary }} snapshot save {{ etcd_backup_dir }}/etcd-snapshot-$(date +%Y%m%d%H%M%S).db \
+        --cacert={{ pki_dir }}/ca.pem \
+        --cert={{ etcd_pem }} \
+        --key={{ etcd_key_pem }} \
+        --endpoints=https://{{ ansible_host }}:2379
+    dest: "{{ etcd_backup_script }}"
+    owner: root
+    group: root
+    mode: "0755"
+  when: inventory_hostname in groups['etcd']
+
+- name: Schedule etcd backup cron job
+  ansible.builtin.cron:
+    name: etcd-backup
+    minute: "0"
+    hour: "2"
+    job: "{{ etcd_backup_script }}"
+  when: inventory_hostname in groups['etcd']

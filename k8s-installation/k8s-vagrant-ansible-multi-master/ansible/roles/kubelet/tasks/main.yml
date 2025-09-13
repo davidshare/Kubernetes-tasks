@@ -1,0 +1,2 @@
+- name: Configure kubelet
+  include_tasks: configure_kubelet.yml

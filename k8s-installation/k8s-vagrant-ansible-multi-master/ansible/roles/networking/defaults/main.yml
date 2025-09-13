@@ -1,0 +1,3 @@
+# Networking paths
+coredns_manifest: "{{ config_dir }}/coredns-deployment.yaml"
+kubectl_binary_dest: /usr/local/bin/kubectl

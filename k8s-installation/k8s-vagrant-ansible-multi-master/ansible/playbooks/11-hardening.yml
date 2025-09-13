@@ -1,0 +1,5 @@
+- name: Apply security hardening
+  hosts: masters,etcd
+  become: yes
+  roles:
+    - hardening

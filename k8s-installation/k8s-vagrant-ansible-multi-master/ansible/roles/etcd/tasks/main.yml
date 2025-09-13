@@ -1,0 +1,5 @@
+- name: Configure etcd
+  include_tasks: configure.yml
+
+- name: Set up etcd service
+  include_tasks: service.yml

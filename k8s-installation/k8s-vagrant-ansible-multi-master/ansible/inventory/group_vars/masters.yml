@@ -1,0 +1,21 @@
+# Control plane settings
+kube_apiserver_bind_address: 0.0.0.0
+kube_apiserver_port: "{{ api_server_port }}"
+kube_apiserver_args:
+  - --etcd-servers=https://192.168.56.11:2379,https://192.168.56.12:2379,https://192.168.56.13:2379
+  - --client-ca-file={{ pki_dir }}/ca.crt
+  - --service-account-key-file={{ pki_dir }}/sa.pub
+  - --tls-cert-file={{ pki_dir }}/apiserver.crt
+  - --tls-private-key-file={{ pki_dir }}/apiserver.key
+  - --service-cluster-ip-range={{ service_cidr }}
+  - --encryption-provider-config={{ config_dir }}/encryption-config.yaml
+
+kube_controller_manager_args:
+  - --cluster-signing-cert-file={{ pki_dir }}/ca.crt
+  - --cluster-signing-key-file={{ pki_dir }}/ca.key
+  - --service-account-private-key-file={{ pki_dir }}/sa.key
+  - --root-ca-file={{ pki_dir }}/ca.crt
+
+kube_scheduler_args:
+  - --authentication-kubeconfig={{ config_dir }}/kube-scheduler.kubeconfig
+  - --authorization-kubeconfig={{ config_dir }}/kube-scheduler.kubeconfig

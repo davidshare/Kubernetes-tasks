@@ -1,0 +1,9 @@
+# etcd node-specific settings
+etcd_name: master2
+etcd_advertise_client_urls: https://192.168.56.12:2379
+etcd_initial_advertise_peer_urls: https://192.168.56.12:2380
+
+# Control plane kubeconfig paths
+kube_apiserver_kubeconfig: "{{ config_dir }}/kube-apiserver.kubeconfig"
+kube_controller_manager_kubeconfig: "{{ config_dir }}/kube-controller-manager.kubeconfig"
+kube_scheduler_kubeconfig: "{{ config_dir }}/kube-scheduler.kubeconfig"
