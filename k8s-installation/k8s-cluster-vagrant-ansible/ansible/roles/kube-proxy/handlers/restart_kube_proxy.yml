@@ -1,0 +1,4 @@
+- name: Restart kube-proxy
+  ansible.builtin.systemd:
+    name: kube-proxy
+    state: restarted
