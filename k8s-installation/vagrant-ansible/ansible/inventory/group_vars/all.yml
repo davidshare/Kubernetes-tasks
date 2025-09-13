@@ -3,6 +3,7 @@ base_dir: /etc/kubernetes
 pki_dir: "{{ base_dir }}/pki"
 manifests_dir: "{{ base_dir }}/manifests"
 config_dir: "{{ base_dir }}/configs"
+ssh_public_key_path: "~/.ssh/id_rsa.pub"
 
 # Binary paths (source from synced ansible/roles/*/files/)
 cfssl_binary: /vagrant_data/ansible/roles/certificates/files/cfssl

@@ -1,3 +1,10 @@
+- name: Deploy SSH public key
+  ansible.builtin.authorized_key:
+    user: "{{ ansible_user }}"
+    state: present
+    key: "{{ lookup('file', ssh_public_key_path) }}"
+  when: ssh_public_key_path is defined
+
 - name: Setup system prerequisites
   include_tasks: setup_prerequisites.yml
 

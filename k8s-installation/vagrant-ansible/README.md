@@ -8,23 +8,20 @@ This README provides comprehensive instructions for setting up, managing, and se
 
 ## Cluster Architecture
 
-The cluster consists of 7 virtual machines with the following roles and specifications:
+The cluster consists of 4 virtual machines with the following roles and specifications:
 
-| Name         | Role                   | CPU | RAM   | Storage | IP Address    | Forwarded Port |
-| ------------ | ---------------------- | --- | ----- | ------- | ------------- | -------------- |
-| jumpbox      | Administration host    | 1   | 512MB | 10GB    | 192.168.56.40 | 2731           |
-| master1      | Kubernetes master node | 2   | 3GB   | 20GB    | 192.168.56.11 | 2711           |
-| master2      | Kubernetes master node | 2   | 3GB   | 20GB    | 192.168.56.12 | 2712           |
-| master3      | Kubernetes master node | 2   | 3GB   | 20GB    | 192.168.56.13 | 2713           |
-| worker1      | Kubernetes worker node | 1   | 2GB   | 20GB    | 192.168.56.21 | 2721           |
-| worker2      | Kubernetes worker node | 1   | 2GB   | 20GB    | 192.168.56.22 | 2722           |
-| loadbalancer | HAProxy load balancer  | 1   | 512MB | 5GB     | 192.168.56.30 | 2732           |
+| Name    | Role                   | CPU | RAM | Storage | IP Address    | Forwarded Port |
+| ------- | ---------------------- | --- | --- | ------- | ------------- | -------------- |
+| jumpbox | Administration host    | 1   | 1GB | 20GB    | 192.168.56.40 | 2731           |
+| master1 | Kubernetes master node | 2   | 2GB | 50GB    | 192.168.56.11 | 2711           |
+| worker1 | Kubernetes worker node | 1   | 2GB | 30GB    | 192.168.56.21 | 2721           |
+| worker2 | Kubernetes worker node | 1   | 2GB | 30GB    | 192.168.56.22 | 2722           |
 
 ### Notes
 
-- **CPU and RAM**: Defined in `Vagrantfile` (`RESOURCES["master"]["ram"] = 3072`, `RESOURCES["worker"]["ram"] = 2048`, `LB_RAM = 512`, `JUMP_RAM = 512`). Masters have 2 CPUs for control plane workloads; others have 1 CPU for efficiency.
-- **Storage**: 10GB for jumpbox (lightweight admin tasks), 20GB for masters/workers (etcd, Kubernetes binaries, containerd), 5GB for loadbalancer (minimal HAProxy needs). Adjustable in VirtualBox.
-- **IP Addresses**: Configured in `Vagrantfile` with `IP_NW = "192.168.56."` (masters: 11–13, workers: 21–22, loadbalancer: 30, jumpbox: 40).
+- **CPU and RAM**: Defined in `Vagrantfile` (`RESOURCES["master"]["ram"] = 2048`, `RESOURCES["worker"]["ram"] = 2048`, `JUMP_RAM = 1024`). Master has 2 CPUs for control plane workloads; workers and jumpbox have 1 CPU for efficiency.
+- **Storage**: 20GB for jumpbox (lightweight admin tasks), 50GB for master (etcd, Kubernetes binaries, containerd), 30GB for workers. Adjustable in VirtualBox.
+- **IP Addresses**: Configured in `Vagrantfile` with `IP_NW = "192.168.56."` (master: 11, workers: 21–22, jumpbox: 40).
 - **Forwarded Ports**: Enable SSH access from the host (e.g., `ssh vagrant@localhost -p 2731` for jumpbox).
 - **Operating System**: All nodes run **Ubuntu 22.04 LTS** (`ubuntu/jammy64` Vagrant box).
 
@@ -40,7 +37,7 @@ The cluster consists of 7 virtual machines with the following roles and specific
 
 ### System Requirements
 
-- **Host Machine**: Minimum 8GB RAM, 4 CPUs, 50GB free disk space to support 7 VMs.
+- **Host Machine**: Minimum 6GB RAM, 4 CPUs, 60GB free disk space to support 4 VMs.
 - **Internet Access**: Required for downloading the Vagrant box (`ubuntu/jammy64`) and binaries (via `provision_jumpbox.sh`).
 
 ## Repository Structure
@@ -262,3 +259,4 @@ Contributions are welcome! Please submit pull requests or open issues for improv
 ## License
 
 This project is licensed under the MIT License. See the `LICENSE` file for details.
+

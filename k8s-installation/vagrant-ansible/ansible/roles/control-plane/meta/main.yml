@@ -1,0 +1,4 @@
+dependencies:
+  - {role: common, tags: ["common"]}
+  - {role: certificates, tags: ["certificates"]}
+  - {role: etcd, tags: ["etcd"]}

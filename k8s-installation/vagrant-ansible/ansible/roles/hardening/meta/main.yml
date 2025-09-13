@@ -1,0 +1,4 @@
+dependencies:
+  - {role: common, tags: ["common"]}
+  - {role: control-plane, tags: ["control-plane"]}
+  - {role: networking, tags: ["networking"]}
