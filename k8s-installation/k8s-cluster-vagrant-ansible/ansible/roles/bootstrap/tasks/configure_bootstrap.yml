@@ -1,0 +1,22 @@
+- name: Create bootstrap token
+  ansible.builtin.command:
+    cmd: "{{ kubectl_binary_dest }} -n kube-system create secret generic bootstrap-token-{{ bootstrap_token_id }} --type=bootstrap.kubernetes.io/token --metadata=namespace:kube-system --from-literal=token-id={{ bootstrap_token_id }} --from-literal=token-secret={{ bootstrap_token_secret }} --from-literal=usage-bootstrap-authentication=true --from-literal=usage-bootstrap-signing=true"
+  changed_when: true
+  when: inventory_hostname == 'master1'
+
+- name: Create bootstrap kubeconfig
+  ansible.builtin.template:
+    src: bootstrap.kubeconfig.j2
+    dest: "{{ bootstrap_kubeconfig }}"
+    owner: root
+    group: root
+    mode: "0600"
+  when: inventory_hostname == 'master1'
+
+- name: Approve CSRs
+  ansible.builtin.command:
+    cmd: "{{ kubectl_binary_dest }} certificate approve {{ item }}"
+  loop: "{{ q('kubernetes.core.k8s', api_version='certificates.k8s.io/v1', kind='CertificateSigningRequest') | json_query('[].metadata.name') }}"
+  changed_when: true
+  when: inventory_hostname == 'master1'
+  notify: Approve CSRs
