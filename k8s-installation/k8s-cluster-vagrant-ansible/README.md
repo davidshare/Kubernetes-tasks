@@ -87,6 +87,7 @@ The cluster consists of 7 virtual machines with the following roles and specific
 │   │   ├── bootstrap/
 │   │   └── hardening/
 ├── Vagrantfile                 # Vagrant configuration
+├── provision_common.sh         # all machines provisioning script
 ├── provision_jumpbox.sh        # Jumpbox provisioning script
 └── README.md                   # This file
 ```
