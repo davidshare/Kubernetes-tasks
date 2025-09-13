@@ -1,7 +1,5 @@
-# etcd node-specific settings
-etcd_name: master1
-etcd_advertise_client_urls: https://192.168.56.11:2379
-etcd_initial_advertise_peer_urls: https://192.168.56.11:2380
+node_name: master1
+api_server_endpoint: https://192.168.56.11:6443
 
 # Control plane kubeconfig paths
 kube_apiserver_kubeconfig: "{{ config_dir }}/kube-apiserver.kubeconfig"

@@ -22,7 +22,7 @@ task_echo "[Task 2] - Generate and distribute SSH keys"
     fi
 
     # Distribute SSH keys to all nodes (password: vagrant)
-    for ip in 192.168.56.11 192.168.56.12 192.168.56.13 192.168.56.21 192.168.56.22 192.168.56.30; do
+    for ip in 192.168.56.11 192.168.56.21 192.168.56.22 192.168.56.40; do
         sshpass -p vagrant ssh-copy-id -o StrictHostKeyChecking=no ubuntu@$ip
     done
 }
@@ -98,9 +98,9 @@ task_echo "[Task 6] - Make binaries executable"
         "roles/networking/files/kubectl"
     )
 
-    for binary in "${binaries[@]}"; do
-        if [ -f "$binary" ]; then
-            chmod +x "$binary"
+    for entry in "${binaries[@]}"; do
+        if [ -f "$entry" ]; then
+            chmod +x "$entry"
         fi
     done
 }

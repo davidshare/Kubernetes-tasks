@@ -10,18 +10,13 @@ IP_NW = "192.168.56."
 RESOURCES = {
   "master" => {
     "ram" => 2048,  # Fixed to 2GB
-    "cpu" => 2,     # 2 CPUs for masters
+    "cpu" => 2,     # 2 CPUs for master
     "disk" => 51200 # 50GB for etcd data
   },
   "worker" => {
     "ram" => 2048,  # Fixed to 2GB
-    "cpu" => 2,     # 2 CPUs
-    "disk" => 30720 # 30GB for workers
-  },
-  "loadbalancer" => {
-    "ram" => 512,   # 512MB for load balancer
     "cpu" => 1,     # 1 CPU
-    "disk" => 20480 # 20GB
+    "disk" => 30720 # 30GB for workers
   },
   "jumpbox" => {
     "ram" => 1024,  # 1GB
@@ -31,13 +26,12 @@ RESOURCES = {
 }
 
 # Define the number of master and worker nodes
-NUM_MASTER_NODES = 3
-NUM_WORKER_NODES = 2
+NUM_MASTER_NODES = 1  # Scaled to 1 master
+NUM_WORKER_NODES = 2  # 2 workers
 
 # Host address start points
-MASTER_IP_START = 10
-NODE_IP_START = 20
-LB_IP_START = 30
+MASTER_IP_START = 11  # Start at .11 for master1
+WORKER_IP_START = 21  # Start at .21 for worker1
 JUMP_IP_START = 40
 
 # Vagrant configuration
@@ -64,7 +58,7 @@ Vagrant.configure("2") do |config|
     node.vm.provision "shell", path: "/vagrant_data/ansible/provision_jumpbox.sh"
   end
 
-  # Provision Master Nodes
+  # Provision Master Node (single master)
   (1..NUM_MASTER_NODES).each do |i|
     config.vm.define "master#{i}" do |node|
       node.vm.provider "virtualbox" do |vb|
@@ -74,7 +68,7 @@ Vagrant.configure("2") do |config|
         vb.customize ['modifyhd', :id, '--resize', RESOURCES["master"]["disk"]]
       end
       node.vm.hostname = "master#{i}"
-      node.vm.network :private_network, ip: IP_NW + "#{MASTER_IP_START + i}"
+      node.vm.network :private_network, ip: IP_NW + "#{MASTER_IP_START + i - 1}"
       node.vm.network "forwarded_port", guest: 22, host: "#{2710 + i}"
     end
   end
@@ -89,21 +83,8 @@ Vagrant.configure("2") do |config|
         vb.customize ['modifyhd', :id, '--resize', RESOURCES["worker"]["disk"]]
       end
       node.vm.hostname = "worker#{i}"
-      node.vm.network :private_network, ip: IP_NW + "#{NODE_IP_START + i}"
+      node.vm.network :private_network, ip: IP_NW + "#{WORKER_IP_START + i - 1}"
       node.vm.network "forwarded_port", guest: 22, host: "#{2720 + i}"
     end
-  end
-
-  # Provision Load Balancer Node
-  config.vm.define "loadbalancer" do |node|
-    node.vm.provider "virtualbox" do |vb|
-      vb.name = "loadbalancer"
-      vb.memory = RESOURCES["loadbalancer"]["ram"]
-      vb.cpus = RESOURCES["loadbalancer"]["cpu"]
-      vb.customize ['modifyhd', :id, '--resize', RESOURCES["loadbalancer"]["disk"]]
-    end
-    node.vm.hostname = "loadbalancer"
-    node.vm.network :private_network, ip: IP_NW + "#{LB_IP_START}"
-    node.vm.network "forwarded_port", guest: 22, host: 2732
   end
 end

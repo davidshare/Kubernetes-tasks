@@ -1,0 +1,11 @@
+- import_playbook: 00-prerequisites.yml
+- import_playbook: 01-certificates.yml
+- import_playbook: 02-etcd-cluster.yml
+- import_playbook: 03-control-plane.yml
+- import_playbook: 04-container-runtime.yml
+- import_playbook: 05-cni.yml
+- import_playbook: 06-kubelet.yml
+- import_playbook: 07-kube-proxy.yml
+- import_playbook: 08-bootstrap.yml
+- import_playbook: 09-networking.yml
+- import_playbook: 10-hardening.yml

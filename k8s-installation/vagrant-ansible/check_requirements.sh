@@ -1,16 +1,16 @@
 #!/bin/bash
 
-# Define cluster resource requirements
-REQ_CPU_CORES=11          # 3 masters (2 CPUs each) + 2 workers (1 CPU each) + 1 loadbalancer (1 CPU) + 1 jumpbox (1 CPU) + 1 buffer
-REQ_RAM_MB=15770          # 3 masters (3072MB each) + 2 workers (2048MB each) + 1 loadbalancer (512MB) + 1 jumpbox (512MB) + 10% buffer
-REQ_DISK_GB=127           # 3 masters (20GB each) + 2 workers (20GB each) + 1 loadbalancer (5GB) + 1 jumpbox (10GB) + 10% buffer
+# Define cluster resource requirements for 1 master, 2 workers, 1 jumpbox
+REQ_CPU_CORES=6           # 1 master (2 CPUs) + 2 workers (1 CPU each) + 1 jumpbox (1 CPU) + 1 buffer
+REQ_RAM_MB=7168           # 1 master (3072MB) + 2 workers (2048MB each) + 1 jumpbox (512MB) + 10% buffer
+REQ_DISK_GB=60            # 1 master (20GB) + 2 workers (20GB each) + 1 jumpbox (10GB) + 10% buffer
 
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 NC='\033[0m' # No Color
 
-echo "Checking system requirements for 7-node Kubernetes cluster..."
+echo "Checking system requirements for 1-master, 2-worker, 1-jumpbox Kubernetes cluster..."
 
 # Initialize variables for status tracking
 CPU_STATUS="PASS"
@@ -25,7 +25,7 @@ if ! command -v mpstat &> /dev/null; then
 fi
 
 TOTAL_CPU_CORES=$(nproc)
-# Get idle percentage from mpstat (single snapshot, similar to provided output)
+# Get idle percentage from mpstat (single snapshot)
 IDLE_PERCENT=$(mpstat 1 1 | grep -A 1 "all" | tail -1 | awk '{print $NF}')
 USED_PERCENT=$(echo "100 - $IDLE_PERCENT" | bc -l)
 USED_CPU_CORES=$(echo "$USED_PERCENT * $TOTAL_CPU_CORES / 100" | bc -l | awk '{printf "%.1f", $0}')

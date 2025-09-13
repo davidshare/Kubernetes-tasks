@@ -2,7 +2,7 @@
 kube_apiserver_bind_address: 0.0.0.0
 kube_apiserver_port: "{{ api_server_port }}"
 kube_apiserver_args:
-  - --etcd-servers=https://192.168.56.11:2379,https://192.168.56.12:2379,https://192.168.56.13:2379
+  - --etcd-servers=https://192.168.56.11:2379
   - --client-ca-file={{ pki_dir }}/ca.crt
   - --service-account-key-file={{ pki_dir }}/sa.pub
   - --tls-cert-file={{ pki_dir }}/apiserver.crt

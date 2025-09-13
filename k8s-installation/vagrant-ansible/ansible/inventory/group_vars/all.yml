@@ -29,6 +29,7 @@ cfssl_version: 1.6.5
 pod_network_cidr: 10.244.0.0/16
 service_cidr: 10.96.0.0/12
 api_server_port: 6443
+api_server_endpoint: https://192.168.56.11:6443 # Updated to master1
 cluster_name: kubernetes
 
 # System settings
