@@ -12,3 +12,4 @@ clusterDNS:
   - "{{ service_cidr | ipaddr('10') }}"
 tlsCertFile: "{{ kubelet_pem }}"
 tlsPrivateKeyFile: "{{ kubelet_key_pem }}"
+cgroupDriver: systemd

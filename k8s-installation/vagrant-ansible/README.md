@@ -10,20 +10,65 @@ This README provides comprehensive instructions for setting up, managing, and se
 
 The cluster consists of 7 virtual machines with the following roles and specifications:
 
-| Name         | Role                     | CPU | RAM   | Storage | IP Address     | Forwarded Port |
-|--------------|--------------------------|-----|-------|---------|----------------|----------------|
-| jumpbox      | Administration host      | 1   | 512MB | 10GB    | 192.168.56.40  | 2731           |
-| master1      | Kubernetes master node   | 2   | 3GB   | 20GB    | 192.168.56.11  | 2711           |
-| master2      | Kubernetes master node   | 2   | 3GB   | 20GB    | 192.168.56.12  | 2712           |
-| master3      | Kubernetes master node   | 2   | 3GB   | 20GB    | 192.168.56.13  | 2713           |
-| worker1      | Kubernetes worker node   | 1   | 2GB   | 20GB    | 192.168.56.21  | 2721           |
-| worker2      | Kubernetes worker node   | 1   | 2GB   | 20GB    | 192.168.56.22  | 2722           |
-| loadbalancer | HAProxy load balancer    | 1   | 512MB | 5GB     | 192.168.56.30  | 2732           |
+| Name         | Role                   | CPU | RAM   | Storage | IP Address    | Forwarded Port |
+| ------------ | ---------------------- | --- | ----- | ------- | ------------- | -------------- |
+| jumpbox      | Administration host    | 1   | 512MB | 10GB    | 192.168.56.40 | 2731           |
+| master1      | Kubernetes master node | 2   | 3GB   | 20GB    | 192.168.56.11 | 2711           |
+| master2      | Kubernetes master node | 2   | 3GB   | 20GB    | 192.168.56.12 | 2712           |
+| master3      | Kubernetes master node | 2   | 3GB   | 20GB    | 192.168.56.13 | 2713           |
+| worker1      | Kubernetes worker node | 1   | 2GB   | 20GB    | 192.168.56.21 | 2721           |
+| worker2      | Kubernetes worker node | 1   | 2GB   | 20GB    | 192.168.56.22 | 2722           |
+| loadbalancer | HAProxy load balancer  | 1   | 512MB | 5GB     | 192.168.56.30 | 2732           |
 
 ### Notes
+
 - **CPU and RAM**: Defined in `Vagrantfile` (`RESOURCES["master"]["ram"] = 3072`, `RESOURCES["worker"]["ram"] = 2048`, `LB_RAM = 512`, `JUMP_RAM = 512`). Masters have 2 CPUs for control plane workloads; others have 1 CPU for efficiency.
 - **Storage**: 10GB for jumpbox (lightweight admin tasks), 20GB for masters/workers (etcd, Kubernetes binaries, containerd), 5GB for loadbalancer (minimal HAProxy needs). Adjustable in VirtualBox.
 - **IP Addresses**: Configured in `Vagrantfile` with `IP_NW = "192.168.56."` (masters: 11–13, workers: 21–22, loadbalancer: 30, jumpbox: 40).
+- **Forwarded Ports**: Enable SSH access from the host (e.g., `ssh vagrant@localhost -p 2731` for jumpbox).
+- **Operating System**: All nodes run **Ubuntu 22.04 LTS** (`ubuntu/jammy64` Vagrant box).
+
+## Prerequisites
+
+### Software Requirements
+
+- **Vagrant**: 2.2.x or higher
+- **VirtualBox**: 6.1 or higher
+- **Ansible**: 2.10 or higher (installed on jumpbox via `provision_jumpbox.sh`)
+- **Git**: For cloning the repository
+- **SSH Client**: For accessing nodes (e.g., `ssh vagrant@localhost -p 2731`)
+
+### System Requirements
+
+- **Host Machine**: Minimum 8GB RAM, 4 CPUs, 50GB free disk space to support 7 VMs.
+- **Internet Access**: Required for downloading the Vagrant box (`ubuntu/jammy64`) and binaries (via `provision_jumpbox.sh`).
+
+## Repository Structure
+
+```
+# Kubernetes Cluster Setup with Vagrant, VirtualBox, and Ansible
+
+## Overview
+
+This project provisions a **4-node Kubernetes cluster** (1 master, 2 workers, 1 jumpbox) using **Vagrant** and **VirtualBox**, with configuration managed by **Ansible**. The cluster runs **Kubernetes v1.34.1** on **Ubuntu 22.04 LTS**, using **etcd v3.6.0** for the control plane database, **containerd v2.0.0** as the container runtime, **Flannel** for networking, and **CoreDNS** for cluster DNS. The setup follows a "Kubernetes the Hard Way" approach, emphasizing manual configuration for learning and production-grade deployment. A jumpbox serves as the centralized administration host, and security features like TLS certificates, RBAC, network policies, audit logging, and etcd backups ensure production readiness.
+
+This README provides comprehensive instructions for setting up, managing, and securing the cluster, tailored for senior engineers practicing Kubernetes deployment, administration, and security.
+
+## Cluster Architecture
+
+The cluster consists of 4 virtual machines with the following roles and specifications:
+
+| Name         | Role                     | CPU | RAM   | Storage | IP Address     | Forwarded Port |
+|--------------|--------------------------|-----|-------|---------|----------------|----------------|
+| jumpbox      | Administration host      | 1   | 1GB   | 20GB    | 192.168.56.40  | 2731           |
+| master1      | Kubernetes master node   | 2   | 2GB   | 50GB    | 192.168.56.11  | 2711           |
+| worker1      | Kubernetes worker node   | 1   | 2GB   | 30GB    | 192.168.56.21  | 2721           |
+| worker2      | Kubernetes worker node   | 1   | 2GB   | 30GB    | 192.168.56.22  | 2722           |
+
+### Notes
+- **CPU and RAM**: Defined in `Vagrantfile` (`RESOURCES["master"]["ram"] = 2048`, `RESOURCES["worker"]["ram"] = 2048`, `JUMP_RAM = 1024`). Master has 2 CPUs for control plane workloads; workers and jumpbox have 1 CPU for efficiency.
+- **Storage**: 20GB for jumpbox (lightweight admin tasks), 50GB for master (etcd, Kubernetes binaries, containerd), 30GB for workers. Adjustable in VirtualBox.
+- **IP Addresses**: Configured in `Vagrantfile` with `IP_NW = "192.168.56."` (master: 11, workers: 21–22, jumpbox: 40).
 - **Forwarded Ports**: Enable SSH access from the host (e.g., `ssh vagrant@localhost -p 2731` for jumpbox).
 - **Operating System**: All nodes run **Ubuntu 22.04 LTS** (`ubuntu/jammy64` Vagrant box).
 
@@ -37,61 +82,12 @@ The cluster consists of 7 virtual machines with the following roles and specific
 - **SSH Client**: For accessing nodes (e.g., `ssh vagrant@localhost -p 2731`)
 
 ### System Requirements
-- **Host Machine**: Minimum 8GB RAM, 4 CPUs, 50GB free disk space to support 7 VMs.
+- **Host Machine**: Minimum 6GB RAM, 4 CPUs, 60GB free disk space to support 4 VMs.
 - **Internet Access**: Required for downloading the Vagrant box (`ubuntu/jammy64`) and binaries (via `provision_jumpbox.sh`).
 
 ## Repository Structure
 
-```
-.
-├── ansible/
-│   ├── inventory/
-│   │   └── hosts.ini           # Node inventory
-│   ├── group_vars/             # Group-specific variables
-│   │   ├── all.yml
-│   │   ├── etcd.yml
-│   │   ├── loadbalancer.yml
-│   │   ├── masters.yml
-│   │   └── workers.yml
-│   ├── host_vars/              # Host-specific variables
-│   │   ├── master1.yml
-│   │   ├── master2.yml
-│   │   ├── master3.yml
-│   │   ├── worker1.yml
-│   │   └── worker2.yml
-│   ├── playbooks/              # Ansible playbooks
-│   │   ├── 00-prerequisites.yml
-│   │   ├── 01-certificates.yml
-│   │   ├── 02-etcd-cluster.yml
-│   │   ├── 03-control-plane.yml
-│   │   ├── 04-loadbalancer.yml
-│   │   ├── 05-container-runtime.yml
-│   │   ├── 06-cni.yml
-│   │   ├── 07-kubelet.yml
-│   │   ├── 08-kube-proxy.yml
-│   │   ├── 09-bootstrap.yml
-│   │   ├── 10-networking.yml
-│   │   ├── 11-hardening.yml
-│   │   └── master.yml          # Master playbook to run all playbooks
-│   ├── roles/                  # Ansible roles
-│   │   ├── common/
-│   │   ├── certificates/
-│   │   ├── etcd/
-│   │   ├── control-plane/
-│   │   ├── loadbalancer/
-│   │   ├── container-runtime/
-│   │   ├── cni/
-│   │   ├── kubelet/
-│   │   ├── kube-proxy/
-│   │   ├── networking/
-│   │   ├── bootstrap/
-│   │   └── hardening/
-├── Vagrantfile                 # Vagrant configuration
-├── check_requirements.sh       # check if local machine meets system requirements
-├── provision_common.sh         # all machines provisioning script
-├── provision_jumpbox.sh        # Jumpbox provisioning script
-└── README.md                   # This file
-```
+ansible/├── ansible.cfg├── inventory│   ├── group_vars│   │   ├── all.yml│   │   ├── etcd.yml│   │   ├── masters.yml│   │   └── workers.yml│   ├── hosts.ini│   └── host_vars│       ├── master1.yml│       ├── worker1.yml│       └── worker2.yml├── playbooks│   ├── 00-prerequisites.yml│   ├── 01-certificates.yml│   ├── 02-etcd-cluster.yml│   ├── 03-control-plane.yml│   ├── 04-container-runtime.yml│   ├── 05-cni.yml│   ├── 06-kubelet.yml│   ├── 07-kube-proxy.yml│   ├── 08-bootstrap.yml│   ├── 09-networking.yml│   ├── 10-hardening.yml│   └── master.yml└── roles    ├── bootstrap    ├── certificates    ├── cni    ├── common    ├── container-runtime    ├── control-plane    ├── etcd    ├── hardening    ├── kubelet    ├── kube-proxy    └── networking
 
 ## Setup Instructions
 
@@ -99,9 +95,108 @@ The cluster consists of 7 virtual machines with the following roles and specific
    ```bash
    git clone <repository-url>
    cd <repository-directory>
+
+
+Check System Requirements:
+./check_requirements.sh
+
+Ensure CPU (6 cores), RAM (7168MB), and disk (60GB) requirements are met.
+
+Start the Cluster:
+vagrant up
+
+Vagrant provisions VMs, runs provision_jumpbox.sh to install Ansible, download binaries, and execute master.yml.
+
+Access the Jumpbox (Optional):
+vagrant ssh jumpbox
+# Or
+ssh vagrant@localhost -p 2731
+
+
+Manual Playbook Execution (Optional):From jumpbox (/vagrant_data/ansible):
+ansible-playbook -i inventory/hosts.ini playbooks/master.yml
+
+
+Verify Cluster:From jumpbox:
+kubectl --kubeconfig=/etc/kubernetes/admin.kubeconfig get nodes
+
+Expected output: master1, worker1, worker2 in Ready state.
+
+
+Component Configuration
+
+Kubernetes: v1.34.1, with kube-apiserver, kube-controller-manager, kube-scheduler on master1 (192.168.56.11), and kubelet, kube-proxy on workers (192.168.56.21–22).
+etcd: v3.6.0, deployed on master1, using TLS (ports 2379–2380/tcp).
+Container Runtime: containerd v2.0.0 with runc, configured with systemd cgroups.
+Networking: Flannel (VXLAN, port 8472/udp) with pod CIDR 10.244.0.0/16, CoreDNS for cluster DNS (service CIDR 10.96.0.0/12, cluster IP 10.96.0.10).
+Certificates: Generated with cfssl v1.6.5, stored in /etc/kubernetes/pki/.
+Security:
+TLS certificates for etcd, API server, kubelet, and admin access.
+RBAC with restricted cluster-admin role.
+Default deny-all network policy.
+Audit logging for API server events.
+Daily etcd backups via cron job.
+UFW firewall rules (ports 22/tcp, 6443/tcp, 2379–2380/tcp, 8472/udp).
+
+
+
+Security Features
+
+TLS Certificates: Generated by certificates role.
+RBAC: Configured in hardening role (rbac-config.yaml.j2).
+Network Policies: Default deny-all (default-network-policy.yaml.j2).
+Audit Logging: Basic audit policy (audit-policy.yaml).
+etcd Backups: Daily snapshots via etcd-backup.sh.
+Encryption: API server secret encryption via encryption-config.yaml.
+Firewall: UFW rules in common role.
+Bootstrap Security: Bootstrap tokens created and removed post-join.
+
+Security Practice Recommendations
+
+Switch to Calico: Replace Flannel in cni role for advanced network policies.
+Enhance CoreDNS: Add DNSSEC and query logging in coredns-deployment.yaml.j2.
+Add Security Tools:
+Kube-bench: Add to hardening role for CIS compliance.
+Falco: Deploy for runtime security monitoring.
+
+
+Simulate Attacks: Test RBAC, network policies, or certificate issues.
+
+Troubleshooting
+
+VM Issues: Check vagrant status, retry with vagrant provision.
+Ansible Failures: Check /var/log/ansible.log on jumpbox.
+Cluster Not Ready:
+Verify etcd: etcdctl --endpoints=https://192.168.56.11:2379 endpoint health
+Check API server: curl -k https://192.168.56.11:6443/healthz
+Inspect pods: kubectl --kubeconfig=/etc/kubernetes/admin.kubeconfig get pods -A
+
+
+Networking Issues: Check Flannel pods: kubectl -n kube-system get pods -l app=flannel
+CoreDNS Issues: Test DNS: kubectl run -it --rm test --image=busybox -- nslookup kubernetes.default
+
+Cleanup
+vagrant destroy -f
+
+Contributing
+Submit pull requests or issues for improvements. Ensure changes include documentation.
+License
+MIT License. See LICENSE file.```
+```
+
+The full tree can be found here [Complete project folder structure](./ansible-tree.md)
+
+## Setup Instructions
+
+1. **Clone the Repository**:
+
+   ```bash
+   git clone <repository-url>
+   cd <repository-directory>
    ```
 
 2. **Start the Cluster**:
+
    - Run the following command to provision all VMs (jumpbox, masters, workers, loadbalancer):
      ```bash
      vagrant up
@@ -109,6 +204,7 @@ The cluster consists of 7 virtual machines with the following roles and specific
    - Vagrant downloads the `ubuntu/jammy64` box, configures VMs per `Vagrantfile`, and runs `provision_jumpbox.sh`. The script installs Ansible, downloads binaries (Kubernetes, etcd, containerd, cfssl, Flannel manifest), and executes the `master.yml` playbook to configure the cluster.
 
 3. **Access the Jumpbox** (Optional):
+
    - If you need to inspect or debug:
      ```bash
      vagrant ssh jumpbox
@@ -119,6 +215,7 @@ The cluster consists of 7 virtual machines with the following roles and specific
      ```
 
 4. **Manual Playbook Execution** (Optional):
+
    - If you prefer to run playbooks individually (e.g., for debugging), navigate to `/vagrant_data/ansible` on the jumpbox and execute:
      ```bash
      ansible-playbook -i inventory/hosts.ini playbooks/master.yml
@@ -154,6 +251,7 @@ The cluster consists of 7 virtual machines with the following roles and specific
   - UFW firewall rules (ports 22/tcp, 6443/tcp, 2379–2380/tcp, 8472/udp).
 
 ## Security Features
+
 - **TLS Certificates**: Generated by `certificates` role, securing communication for etcd, API server, kubelet, and kubectl.
 - **RBAC**: Configured in `hardening` role (`rbac-config.yaml.j2`) to enforce least-privilege access.
 - **Network Policies**: Default deny-all policy (`default-network-policy.yaml.j2`) in `hardening` role to restrict pod-to-pod traffic.
@@ -164,7 +262,9 @@ The cluster consists of 7 virtual machines with the following roles and specific
 - **Bootstrap Security**: Bootstrap tokens created and removed post-join (`bootstrap` and `hardening` roles).
 
 ## Security Practice Recommendations
+
 To enhance Kubernetes security practice:
+
 - **Switch to Calico**: Replace Flannel in `cni` role for advanced network policies and encryption.
   - Update `roles/cni/files/kube-flannel.yml` to `calico.yaml`.
   - Adjust `roles/common/tasks/configure_firewall.yml` to allow BGP (179/tcp) and VXLAN (4789/udp).
@@ -240,6 +340,7 @@ To enhance Kubernetes security practice:
 ## Cleanup
 
 To destroy the cluster:
+
 ```bash
 vagrant destroy -f
 ```

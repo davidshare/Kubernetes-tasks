@@ -11,7 +11,7 @@
     owner: root
     group: root
     mode: "0600"
-  when: inventory_hostname == 'master1'
+  when: inventory_hostname in groups['workers']
 
 - name: Approve CSRs
   ansible.builtin.command:

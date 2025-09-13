@@ -1,0 +1,9 @@
+network:
+  masters:
+    - ip: 192.168.56.11
+      name: master1
+  workers:
+    - ip: 192.168.56.21
+      name: worker1
+    - ip: 192.168.56.22
+      name: worker2

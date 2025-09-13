@@ -1,5 +1,4 @@
 192.168.56.11 master01
 192.168.56.21 worker01
 192.168.56.22 worker02
-192.168.56.30 loadbalancer
 192.168.56.40 jumpbox
