@@ -1,0 +1,5 @@
+audit_policy: "{{ config_dir }}/audit-policy.yaml"
+network_policy: "{{ config_dir }}/default-network-policy.yaml"
+rbac_config: "{{ config_dir }}/rbac-config.yaml"
+etcd_backup_dir: /var/backups/etcd
+etcd_backup_script: /usr/local/bin/etcd-backup.sh

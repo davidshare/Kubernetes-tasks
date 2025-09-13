@@ -1,0 +1,15 @@
+- name: Apply RBAC configuration
+  ansible.builtin.template:
+    src: rbac-config.yaml.j2
+    dest: "{{ rbac_config }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Apply RBAC
+  when: inventory_hostname == 'master1'
+
+- name: Apply RBAC policy
+  ansible.builtin.command:
+    cmd: "{{ kubectl_binary_dest }} apply -f {{ rbac_config }}"
+  changed_when: true
+  when: inventory_hostname == 'master1'
