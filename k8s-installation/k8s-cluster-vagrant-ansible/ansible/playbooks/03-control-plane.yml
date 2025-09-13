@@ -1,0 +1,5 @@
+- name: Configure Kubernetes control plane
+  hosts: masters
+  become: yes
+  roles:
+    - control-plane

@@ -1,0 +1,5 @@
+- name: Configure bootstrap
+  hosts: masters
+  become: yes
+  roles:
+    - bootstrap
