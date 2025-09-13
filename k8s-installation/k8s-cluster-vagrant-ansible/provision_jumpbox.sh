@@ -45,7 +45,7 @@ task_echo "[Task 4] - Download binaries"
         "https://dl.k8s.io/v1.34.1/bin/linux/amd64/kubelet|roles/kubelet/files/kubelet"
         "https://dl.k8s.io/v1.34.1/bin/linux/amd64/kube-proxy|roles/kube-proxy/files/kube-proxy"
         "https://github.com/opencontainers/runc/releases/download/v1.2.0/runc.amd64|roles/container-runtime/files/runc"
-        "https://github.com/containerd/containerd/releases/download/v2.0.0/containerd-2.0.0-linux-amd64.tar.gz|roles/container-runtime/files/containerd.tar.gz"
+        "https://github.com/containerd/containerd/releases/download/v2.1.4/containerd-2.1.4-linux-amd64.tar.gz|roles/container-runtime/files/containerd.tar.gz"
         "https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml|roles/cni/files/kube-flannel.yml"
         "https://dl.k8s.io/v1.34.1/bin/linux/amd64/kubectl|roles/networking/files/kubectl"
     )
