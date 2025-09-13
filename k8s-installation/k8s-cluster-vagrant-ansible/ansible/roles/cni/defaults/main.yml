@@ -1,0 +1,3 @@
+# Flannel paths
+flannel_manifest_dest: "{{ config_dir }}/kube-flannel.yml"
+kubectl_binary: "{{ kubectl_binary }}"

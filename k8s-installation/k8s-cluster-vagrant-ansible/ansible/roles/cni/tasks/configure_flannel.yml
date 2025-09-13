@@ -1,0 +1,14 @@
+- name: Copy Flannel manifest to master node
+  ansible.builtin.copy:
+    src: "{{ flannel_manifest }}"
+    dest: "{{ flannel_manifest_dest }}"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Apply Flannel manifest
+  ansible.builtin.command:
+    cmd: "{{ kubectl_binary }} apply -f {{ flannel_manifest_dest }}"
+  changed_when: true
+  when: inventory_hostname == 'master1' # Apply only on one master to avoid conflicts
+  notify: Apply Flannel

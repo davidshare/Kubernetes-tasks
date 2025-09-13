@@ -1,0 +1,2 @@
+- name: Configure Flannel CNI
+  include_tasks: configure_flannel.yml
