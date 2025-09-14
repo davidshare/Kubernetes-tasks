@@ -1,3 +1,4 @@
 dependencies:
+  - {role: jumpbox_setup, tags: ["jumpbox_setup"]}
   - {role: common, tags: ["common"]}
   - {role: control-plane, tags: ["control-plane"]}

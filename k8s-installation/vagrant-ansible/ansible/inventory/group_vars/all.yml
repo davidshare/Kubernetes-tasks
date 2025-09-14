@@ -3,7 +3,6 @@ base_dir: /etc/kubernetes
 pki_dir: "{{ base_dir }}/pki"
 manifests_dir: "{{ base_dir }}/manifests"
 config_dir: "{{ base_dir }}/configs"
-ssh_public_key_path: "~/.ssh/id_rsa.pub"
 
 # Binary paths (source from synced ansible/roles/*/files/)
 cfssl_binary: /vagrant_data/ansible/roles/certificates/files/cfssl
@@ -36,3 +35,32 @@ cluster_name: kubernetes
 # System settings
 swap_enabled: false
 ntp_package: chrony
+
+
+ssh_public_key_path: /vagrant_data/.vagrant/machines/jumpbox/virtualbox/private_key.pub
+common_firewall_ports:
+  - 22/tcp
+  - 6443/tcp
+  - 2379-2380/tcp
+cni_plugin: flannel
+cni_manifest_paths:
+  flannel: "{{ role_path }}/files/flannel.yml"
+  calico: "{{ role_path }}/files/calico.yaml"
+  cilium: "{{ role_path }}/files/cilium.yaml"
+cni_configs:
+  flannel:
+    pod_network_cidr: 10.244.0.0/16
+  calico:
+    pod_network_cidr: 192.168.0.0/16
+  cilium:
+    pod_network_cidr: 10.0.0.0/16
+pod_network_cidr: "{{ cni_configs[cni_plugin].pod_network_cidr }}"
+cni_extra_ports:
+  flannel:
+    - 8472/udp
+  calico:
+    - 179/tcp
+    - 4789/udp
+  cilium:
+    - 8472/udp
+    - 4240/tcp  # Hubble for Cilium

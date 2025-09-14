@@ -1,0 +1,2703 @@
+=== ./check_requirements.sh ===
+
+#!/bin/bash
+
+# Define cluster resource requirements for 1 master, 2 workers, 1 jumpbox
+REQ_CPU_CORES=6           # 1 master (2 CPUs) + 2 workers (1 CPU each) + 1 jumpbox (1 CPU) + 1 buffer
+REQ_RAM_MB=7168           # 1 master (3072MB) + 2 workers (2048MB each) + 1 jumpbox (512MB) + 10% buffer
+REQ_DISK_GB=60            # 1 master (20GB) + 2 workers (20GB each) + 1 jumpbox (10GB) + 10% buffer
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NC='\033[0m' # No Color
+
+echo "Checking system requirements for 1-master, 2-worker, 1-jumpbox Kubernetes cluster..."
+
+# Initialize variables for status tracking
+CPU_STATUS="PASS"
+RAM_STATUS="PASS"
+DISK_STATUS="PASS"
+
+# 1. CPU Check
+# Install sysstat if not present (for mpstat)
+if ! command -v mpstat &> /dev/null; then
+    echo "Installing sysstat for mpstat..."
+    sudo apt-get update && sudo apt-get install -y sysstat
+fi
+
+TOTAL_CPU_CORES=$(nproc)
+# Get idle percentage from mpstat (single snapshot)
+IDLE_PERCENT=$(mpstat 1 1 | grep -A 1 "all" | tail -1 | awk '{print $NF}')
+USED_PERCENT=$(echo "100 - $IDLE_PERCENT" | bc -l)
+USED_CPU_CORES=$(echo "$USED_PERCENT * $TOTAL_CPU_CORES / 100" | bc -l | awk '{printf "%.1f", $0}')
+AVAILABLE_CPU_CORES=$(echo "$IDLE_PERCENT * $TOTAL_CPU_CORES / 100" | bc -l | awk '{printf "%.1f", $0}')
+echo "CPU Check:"
+echo "  Total Capacity: ${TOTAL_CPU_CORES} cores"
+echo "  Used: ${USED_CPU_CORES} cores (${USED_PERCENT}%)"
+echo "  Available: ${AVAILABLE_CPU_CORES} cores (${IDLE_PERCENT}%)"
+echo "  Required: ${REQ_CPU_CORES} cores"
+if [ "$(echo "$AVAILABLE_CPU_CORES >= $REQ_CPU_CORES" | bc -l)" -eq 1 ]; then
+    echo -e "  Status: ${GREEN}PASS${NC}"
+else
+    echo -e "  Status: ${RED}FAIL - Need at least ${REQ_CPU_CORES} cores available${NC}"
+    CPU_STATUS="FAIL"
+fi
+echo ""
+
+# 2. RAM Check
+TOTAL_RAM_MB=$(free -m | awk '/Mem:/ {print $2}')
+USED_RAM_MB=$(free -m | awk '/Mem:/ {print $3}')
+AVAILABLE_RAM_MB=$(free -m | awk '/Mem:/ {print $4}')
+echo "RAM Check:"
+echo "  Total Capacity: ${TOTAL_RAM_MB}MB"
+echo "  Used: ${USED_RAM_MB}MB"
+echo "  Available: ${AVAILABLE_RAM_MB}MB"
+echo "  Required: ${REQ_RAM_MB}MB"
+if [ "$AVAILABLE_RAM_MB" -ge "$REQ_RAM_MB" ]; then
+    echo -e "  Status: ${GREEN}PASS${NC}"
+else
+    echo -e "  Status: ${RED}FAIL - Need at least ${REQ_RAM_MB}MB free RAM${NC}"
+    RAM_STATUS="FAIL"
+fi
+echo ""
+
+# 3. Disk Check
+DISK_PATH="$HOME/VirtualBox VMs"
+if [ ! -d "$DISK_PATH" ]; then
+    DISK_PATH="$HOME"
+fi
+TOTAL_DISK_GB=$(df -h "$DISK_PATH" | tail -1 | awk '{print int($2)}')
+USED_DISK_GB=$(df -h "$DISK_PATH" | tail -1 | awk '{print int($3)}')
+AVAILABLE_DISK_GB=$(df -h "$DISK_PATH" | tail -1 | awk '{print int($4)}')
+echo "Disk Check (at $DISK_PATH):"
+echo "  Total Capacity: ${TOTAL_DISK_GB}GB"
+echo "  Used: ${USED_DISK_GB}GB"
+echo "  Available: ${AVAILABLE_DISK_GB}GB"
+echo "  Required: ${REQ_DISK_GB}GB"
+if [ "$AVAILABLE_DISK_GB" -ge "$REQ_DISK_GB" ]; then
+    echo -e "  Status: ${GREEN}PASS${NC}"
+else
+    echo -e "  Status: ${RED}FAIL - Need at least ${REQ_DISK_GB}GB free disk space${NC}"
+    DISK_STATUS="FAIL"
+fi
+echo ""
+
+# Summary
+echo "Summary of Requirements Check:"
+echo -e "  CPU: ${CPU_STATUS}"
+echo -e "  RAM: ${RAM_STATUS}"
+echo -e "  Disk: ${DISK_STATUS}"
+echo ""
+
+if [ "$CPU_STATUS" = "PASS" ] && [ "$RAM_STATUS" = "PASS" ] && [ "$DISK_STATUS" = "PASS" ]; then
+    echo -e "${GREEN}All checks passed! Your system meets the requirements for the Kubernetes cluster setup.${NC}"
+else
+    echo -e "${RED}One or more checks failed. Please ensure your system meets the minimum requirements before proceeding.${NC}"
+    exit 1
+fi
+
+
+=== ./provision_common.sh ===
+
+#!/bin/bash
+
+set -e
+
+echo "Running common provisioning tasks..."
+
+# Disable swap
+swapoff -a
+sed -i '/ swap / s/^/#/' /etc/fstab
+
+# Install and configure NTP
+apt-get update
+apt-get install -y chrony
+systemctl enable chrony
+systemctl start chrony
+
+echo "Common provisioning complete."
+
+=== ./README.md ===
+
+# Kubernetes Cluster Setup with Vagrant, VirtualBox, and Ansible
+
+## Overview
+
+This project provisions a **7-node Kubernetes cluster** (3 masters, 2 workers, 1 load balancer, 1 jumpbox) using **Vagrant** and **VirtualBox**, with configuration managed by **Ansible**. The cluster runs **Kubernetes v1.34.1** on **Ubuntu 22.04 LTS**, using **etcd v3.6.0** for the control plane database, **containerd v2.0.0** as the container runtime, **Flannel** for networking, **HAProxy** for API server load balancing, and **CoreDNS** for cluster DNS. The setup follows a "Kubernetes the Hard Way" approach, emphasizing manual configuration for learning and production-grade deployment. A jumpbox serves as the centralized administration host, and security features like TLS certificates, RBAC, network policies, audit logging, and etcd backups ensure production readiness.
+
+This README provides comprehensive instructions for setting up, managing, and securing the cluster, tailored for senior engineers practicing Kubernetes deployment, administration, and security.
+
+## Cluster Architecture
+
+The cluster consists of 4 virtual machines with the following roles and specifications:
+
+| Name    | Role                   | CPU | RAM | Storage | IP Address    | Forwarded Port |
+| ------- | ---------------------- | --- | --- | ------- | ------------- | -------------- |
+| jumpbox | Administration host    | 1   | 1GB | 20GB    | 192.168.56.40 | 2731           |
+| master1 | Kubernetes master node | 2   | 2GB | 50GB    | 192.168.56.11 | 2711           |
+| worker1 | Kubernetes worker node | 1   | 2GB | 30GB    | 192.168.56.21 | 2721           |
+| worker2 | Kubernetes worker node | 1   | 2GB | 30GB    | 192.168.56.22 | 2722           |
+
+### Notes
+
+- **CPU and RAM**: Defined in `Vagrantfile` (`RESOURCES["master"]["ram"] = 2048`, `RESOURCES["worker"]["ram"] = 2048`, `JUMP_RAM = 1024`). Master has 2 CPUs for control plane workloads; workers and jumpbox have 1 CPU for efficiency.
+- **Storage**: 20GB for jumpbox (lightweight admin tasks), 50GB for master (etcd, Kubernetes binaries, containerd), 30GB for workers. Adjustable in VirtualBox.
+- **IP Addresses**: Configured in `Vagrantfile` with `IP_NW = "192.168.56."` (master: 11, workers: 21–22, jumpbox: 40).
+- **Forwarded Ports**: Enable SSH access from the host (e.g., `ssh vagrant@localhost -p 2731` for jumpbox).
+- **Operating System**: All nodes run **Ubuntu 22.04 LTS** (`ubuntu/jammy64` Vagrant box).
+
+## Prerequisites
+
+### Software Requirements
+
+- **Vagrant**: 2.2.x or higher
+- **VirtualBox**: 6.1 or higher
+- **Ansible**: 2.10 or higher (installed on jumpbox via `provision_jumpbox.sh`)
+- **Git**: For cloning the repository
+- **SSH Client**: For accessing nodes (e.g., `ssh vagrant@localhost -p 2731`)
+
+### System Requirements
+
+- **Host Machine**: Minimum 6GB RAM, 4 CPUs, 60GB free disk space to support 4 VMs.
+- **Internet Access**: Required for downloading the Vagrant box (`ubuntu/jammy64`) and binaries (via `provision_jumpbox.sh`).
+
+## Repository Structure
+
+```
+.
+├── ansible
+│   ├── ansible.cfg
+│   ├── inventory
+│   │   ├── group_vars
+│   │   ├── hosts.ini
+│   │   └── host_vars
+│   ├── meta
+│   │   └── main.yml
+│   ├── playbooks
+│   │   ├── 00-prerequisites.yml
+│   │   ├── 01-certificates.yml
+│   │   ├── 02-etcd-cluster.yml
+│   │   ├── 03-control-plane.yml
+│   │   ├── 04-container-runtime.yml
+│   │   ├── 05-cni.yml
+│   │   ├── 06-kubelet.yml
+│   │   ├── 07-kube-proxy.yml
+│   │   ├── 08-bootstrap.yml
+│   │   ├── 09-networking.yml
+│   │   ├── 10-hardening.yml
+│   │   └── master.yml
+│   └── roles
+│       ├── bootstrap
+│       ├── certificates
+│       ├── cni
+│       ├── common
+│       ├── container-runtime
+│       ├── control-plane
+│       ├── etcd
+│       ├── hardening
+│       ├── kubelet
+│       ├── kube-proxy
+│       └── networking
+├── ansible-tree.md
+├── check_requirements.sh
+├── combine.sh
+├── hosts.txt
+├── provision_common.sh
+├── provision_jumpbox.sh
+├── README.md
+└── Vagrantfile
+
+19 directories, 23 files
+```
+
+The full tree can be found here [Complete project folder structure](./ansible-tree.md)
+
+## Setup Instructions
+
+1. **Clone the Repository**:
+
+   ```bash
+   git clone <repository-url>
+   cd <repository-directory>
+   ```
+
+2. **Start the Cluster**:
+
+   - Run the following command to provision all VMs (jumpbox, masters, workers, loadbalancer):
+     ```bash
+     vagrant up
+     ```
+   - Vagrant downloads the `ubuntu/jammy64` box, configures VMs per `Vagrantfile`, and runs `provision_jumpbox.sh`. The script installs Ansible, downloads binaries (Kubernetes, etcd, containerd, cfssl, Flannel manifest), and executes the `master.yml` playbook to configure the cluster.
+
+3. **Access the Jumpbox** (Optional):
+
+   - If you need to inspect or debug:
+     ```bash
+     vagrant ssh jumpbox
+     ```
+     Or, from the host:
+     ```bash
+     ssh vagrant@localhost -p 2731
+     ```
+
+4. **Manual Playbook Execution** (Optional):
+
+   - If you prefer to run playbooks individually (e.g., for debugging), navigate to `/vagrant_data/ansible` on the jumpbox and execute:
+     ```bash
+     ansible-playbook -i inventory/hosts.ini playbooks/master.yml
+     ```
+     Or run specific playbooks:
+     ```bash
+     ansible-playbook -i inventory/hosts.ini playbooks/00-prerequisites.yml
+     ansible-playbook -i inventory/hosts.ini playbooks/01-certificates.yml
+     # ... continue for all playbooks
+     ```
+
+5. **Verify Cluster**:
+   - From the jumpbox, check cluster status:
+     ```bash
+     kubectl --kubeconfig=/etc/kubernetes/admin.kubeconfig get nodes
+     ```
+   - Expected output: All nodes (master1, master2, master3, worker1, worker2) in `Ready` state.
+
+## Component Configuration
+
+- **Kubernetes**: v1.34.1, with `kube-apiserver`, `kube-controller-manager`, `kube-scheduler` on masters (192.168.56.11–13), and `kubelet`, `kube-proxy` on workers (192.168.56.21–22).
+- **etcd**: v3.6.0, deployed on masters, using TLS for secure communication (ports 2379–2380/tcp).
+- **Container Runtime**: containerd v2.0.0 with runc, configured with systemd cgroups for Kubernetes CRI.
+- **Networking**: Flannel (VXLAN, port 8472/udp) with pod CIDR 10.244.0.0/16, CoreDNS for cluster DNS (service CIDR 10.96.0.0/12, cluster IP 10.96.0.10).
+- **Load Balancer**: HAProxy on loadbalancer node (192.168.56.30:6443), balancing API server traffic to masters.
+- **Certificates**: Generated with cfssl v1.6.5, stored in `/etc/kubernetes/pki/` on relevant nodes.
+- **Security**:
+  - TLS certificates for etcd, API server, kubelet, and admin access.
+  - RBAC with restricted `cluster-admin` role (`hardening` role).
+  - Default deny-all network policy for pod isolation.
+  - Audit logging for API server events.
+  - Daily etcd backups via cron job.
+  - UFW firewall rules (ports 22/tcp, 6443/tcp, 2379–2380/tcp, 8472/udp).
+
+## Security Features
+
+- **TLS Certificates**: Generated by `certificates` role, securing communication for etcd, API server, kubelet, and kubectl.
+- **RBAC**: Configured in `hardening` role (`rbac-config.yaml.j2`) to enforce least-privilege access.
+- **Network Policies**: Default deny-all policy (`default-network-policy.yaml.j2`) in `hardening` role to restrict pod-to-pod traffic.
+- **Audit Logging**: Basic audit policy (`audit-policy.yaml`) for monitoring API server events.
+- **etcd Backups**: Daily snapshots via `etcd-backup.sh` in `hardening` role, stored in `/var/backups/etcd`.
+- **Encryption**: API server secret encryption via `encryption-config.yaml` in `control-plane` role.
+- **Firewall**: UFW rules in `common` role to restrict network access.
+- **Bootstrap Security**: Bootstrap tokens created and removed post-join (`bootstrap` and `hardening` roles).
+
+## Security Practice Recommendations
+
+To enhance Kubernetes security practice:
+
+- **Switch to Calico**: Replace Flannel in `cni` role for advanced network policies and encryption.
+  - Update `roles/cni/files/kube-flannel.yml` to `calico.yaml`.
+  - Adjust `roles/common/tasks/configure_firewall.yml` to allow BGP (179/tcp) and VXLAN (4789/udp).
+- **Enhance CoreDNS**: Add DNSSEC and query logging plugins in `roles/networking/templates/coredns-deployment.yaml.j2`:
+  ```yaml
+  data:
+    Corefile: |
+      .:53 {
+          errors
+          health
+          kubernetes cluster.local {{ pod_network_cidr | ipaddr('net') }}
+          forward . /etc/resolv.conf
+          cache 30
+          loop
+          reload
+          log
+          dnssec
+      }
+  ```
+- **Add Security Tools**:
+  - **Kube-bench**: Add to `hardening` role to run CIS Kubernetes Benchmark checks:
+    ```yaml
+    - name: Run kube-bench
+      ansible.builtin.command:
+        cmd: /usr/local/bin/kube-bench run --benchmark cis-1.8
+      when: inventory_hostname in groups['masters']
+    ```
+  - **Falco**: Deploy via a manifest in `hardening` role for runtime security monitoring.
+- **Simulate Attacks**: Test RBAC misconfigurations, network policy bypasses, or certificate compromises using `kubectl` or malicious pods.
+
+## Troubleshooting
+
+- **VM Issues**:
+  - Run `vagrant status` to check VM states.
+  - Use `vagrant provision` to retry provisioning if a VM fails.
+  - Ensure host has sufficient resources (8GB RAM, 4 CPUs, 50GB disk).
+- **Ansible Failures**:
+  - Check `/var/log/ansible.log` on jumpbox for errors.
+  - Verify `inventory/hosts.ini`, `group_vars/`, and `host_vars/` for correct IPs and variables.
+  - Run individual playbooks for debugging:
+    ```bash
+    ansible-playbook -i inventory/hosts.ini playbooks/03-control-plane.yml
+    ```
+- **Cluster Not Ready**:
+  - Verify etcd health:
+    ```bash
+    etcdctl --endpoints=https://192.168.56.11:2379 endpoint health
+    ```
+  - Check API server:
+    ```bash
+    curl -k https://192.168.56.30:6443/healthz
+    ```
+  - Inspect pod status:
+    ```bash
+    kubectl --kubeconfig=/etc/kubernetes/admin.kubeconfig get pods -A
+    ```
+- **Networking Issues**:
+  - Ensure Flannel pods are running:
+    ```bash
+    kubectl -n kube-system get pods -l app=flannel
+    ```
+  - Verify firewall allows 8472/udp (`ufw status` on nodes).
+- **CoreDNS Issues**:
+  - Check CoreDNS pods:
+    ```bash
+    kubectl -n kube-system get pods -l k8s-app=kube-dns
+    ```
+  - Test DNS resolution:
+    ```bash
+    kubectl run -it --rm test --image=busybox -- nslookup kubernetes.default
+    ```
+
+## Cleanup
+
+To destroy the cluster:
+
+```bash
+vagrant destroy -f
+```
+
+This removes all VMs and associated resources.
+
+## Contributing
+
+Contributions are welcome! Please submit pull requests or open issues for improvements, bug fixes, or security enhancements. Ensure changes align with the project’s goals and include clear documentation.
+
+## License
+
+This project is licensed under the MIT License. See the `LICENSE` file for details.
+
+
+
+=== ./Vagrantfile ===
+
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+require 'yaml'
+
+# Load network configuration from network.yml
+network_config = YAML.load_file('ansible/inventory/group_vars/network.yml')
+
+# Define resources
+RESOURCES = {
+  "master" => { "ram" => 2048, "cpu" => 2, "disk" => "50GB" },
+  "worker" => { "ram" => 2048, "cpu" => 1, "disk" => "30GB" },
+}
+JUMP_RAM = 1024
+JUMP_DISK = "20GB"
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "ubuntu/jammy64"
+  config.ssh.insert_key = false
+
+  # Jumpbox configuration
+  config.vm.define "jumpbox" do |jumpbox|
+    jumpbox.vm.network "private_network", ip: network_config['network']['jumpbox']['ip']
+    jumpbox.vm.network "forwarded_port", guest: 22, host: 2731, id: "ssh"
+    jumpbox.vm.hostname = network_config['network']['jumpbox']['name']
+    jumpbox.vm.provider "virtualbox" do |vb|
+      vb.memory = JUMP_RAM
+      vb.cpus = 1
+      vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+      vb.customize ['createhd', '--filename', './.vagrant/jumpbox-disk.vdi', '--size', 20 * 1024]
+      vb.customize ['storageattach', :id, '--storagectl', 'SATA Controller', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', './.vagrant/jumpbox-disk.vdi']
+    end
+    jumpbox.vm.provision "shell", path: "provision_jumpbox.sh"
+  end
+
+  # Master nodes configuration
+  network_config['network']['masters'].each_with_index do |master, index|
+    config.vm.define master['name'] do |master_node|
+      master_node.vm.network "private_network", ip: master['ip']
+      master_node.vm.network "forwarded_port", guest: 22, host: 2711 + index, id: "ssh"
+      master_node.vm.hostname = master['name']
+      master_node.vm.provider "virtualbox" do |vb|
+        vb.memory = RESOURCES["master"]["ram"]
+        vb.cpus = RESOURCES["master"]["cpu"]
+        vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+        vb.customize ['createhd', '--filename', "./.vagrant/#{master['name']}-disk.vdi", '--size', 50 * 1024]
+        vb.customize ['storageattach', :id, '--storagectl', 'SATA Controller', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', "./.vagrant/#{master['name']}-disk.vdi"]
+      end
+      master_node.vm.provision "shell", path: "provision_common.sh"
+    end
+  end
+
+  # Worker nodes configuration
+  network_config['network']['workers'].each_with_index do |worker, index|
+    config.vm.define worker['name'] do |worker_node|
+      worker_node.vm.network "private_network", ip: worker['ip']
+      worker_node.vm.network "forwarded_port", guest: 22, host: 2721 + index, id: "ssh"
+      worker_node.vm.hostname = worker['name']
+      worker_node.vm.provider "virtualbox" do |vb|
+        vb.memory = RESOURCES["worker"]["ram"]
+        vb.cpus = RESOURCES["worker"]["cpu"]
+        vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+        vb.customize ['createhd', '--filename', "./.vagrant/#{worker['name']}-disk.vdi", '--size', 30 * 1024]
+        vb.customize ['storageattach', :id, '--storagectl', 'SATA Controller', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', "./.vagrant/#{worker['name']}-disk.vdi"]
+      end
+      worker_node.vm.provision "shell", path: "provision_common.sh"
+    end
+  end
+end
+
+
+=== ./combine.sh ===
+
+#!/bin/bash
+
+# Script to combine all files into a single file with path headers
+# Usage: ./combine_files.sh [output_file]
+
+OUTPUT_FILE="${1:-combined_output.txt}"
+
+# Function to process each file
+process_file() {
+    local file="$1"
+    echo "=== $file ==="
+    echo ""
+    cat "$file"
+    echo ""
+    echo ""
+}
+
+# Export the function so it can be used by find
+export -f process_file
+
+# Clear the output file if it exists
+> "$OUTPUT_FILE"
+
+# Find all files (excluding directories) and process them
+find . -type f -not -path "./$OUTPUT_FILE" -exec bash -c 'process_file "$0"' {} \; >> "$OUTPUT_FILE"
+
+echo "All files have been combined into: $OUTPUT_FILE"
+echo "Total files processed: $(find . -type f -not -path "./$OUTPUT_FILE" | wc -l)"
+
+=== ./ansible-tree.md ===
+
+# Project directory structure
+
+```
+.
+├── ansible
+│   ├── ansible.cfg
+│   ├── inventory
+│   │   ├── group_vars
+│   │   │   ├── all.yml
+│   │   │   ├── etcd.yml
+│   │   │   ├── masters.yml
+│   │   │   ├── network.yml
+│   │   │   └── workers.yml
+│   │   ├── hosts.ini
+│   │   └── host_vars
+│   │       ├── master1.yml
+│   │       ├── worker1.yml
+│   │       └── worker2.yml
+│   ├── meta
+│   │   └── main.yml
+│   ├── playbooks
+│   │   ├── 00-prerequisites.yml
+│   │   ├── 01-certificates.yml
+│   │   ├── 02-etcd-cluster.yml
+│   │   ├── 03-control-plane.yml
+│   │   ├── 04-container-runtime.yml
+│   │   ├── 05-cni.yml
+│   │   ├── 06-kubelet.yml
+│   │   ├── 07-kube-proxy.yml
+│   │   ├── 08-bootstrap.yml
+│   │   ├── 09-networking.yml
+│   │   ├── 10-hardening.yml
+│   │   └── master.yml
+│   └── roles
+│       ├── bootstrap
+│       │   ├── defaults
+│       │   │   └── main.yml
+│       │   ├── handlers
+│       │   │   └── approve_csrs.yml
+│       │   ├── tasks
+│       │   │   ├── configure_bootstrap.yml
+│       │   │   ├── generate_kubeconfigs.yml
+│       │   │   └── main.yml
+│       │   └── templates
+│       │       ├── admin.kubeconfig.j2
+│       │       ├── bootstrap.kubeconfig.j2
+│       │       ├── kubelet.kubeconfig.j2
+│       │       └── kube-proxy.kubeconfig.j2
+│       ├── certificates
+│       │   ├── defaults
+│       │   │   └── main.yml
+│       │   ├── handlers
+│       │   │   └── main.yml
+│       │   └── tasks
+│       │       ├── copy_certs.yml
+│       │       ├── generate_admin_cert.yml
+│       │       ├── generate_ca.yml
+│       │       ├── generate_controller_certs.yml
+│       │       ├── generate_serviceaccount_key.yml
+│       │       ├── generate_worker_certs.yml
+│       │       └── main.yml
+│       ├── cni
+│       │   ├── defaults
+│       │   │   └── main.yml
+│       │   ├── handlers
+│       │   │   └── apply_flannel.yml
+│       │   └── tasks
+│       │       ├── configure_flannel.yml
+│       │       └── main.yml
+│       ├── common
+│       │   ├── defaults
+│       │   │   └── main.yml
+│       │   ├── handlers
+│       │   │   └── main.yml
+│       │   ├── tasks
+│       │   │   ├── configure_firewall.yml
+│       │   │   ├── main.yml
+│       │   │   └── setup_prerequisites.yml
+│       │   └── templates
+│       │       ├── limits.conf.j2
+│       │       └── sysctl.conf.j2
+│       ├── container-runtime
+│       │   ├── defaults
+│       │   │   └── main.yml
+│       │   ├── handlers
+│       │   │   └── restart_containerd.yml
+│       │   ├── tasks
+│       │   │   ├── configure_containerd.yml
+│       │   │   └── main.yml
+│       │   └── templates
+│       │       └── containerd-config.toml.j2
+│       ├── control-plane
+│       │   ├── defaults
+│       │   │   └── main.yml
+│       │   ├── handlers
+│       │   │   ├── restart_apiserver.yml
+│       │   │   ├── restart_controller_manager.yml
+│       │   │   └── restart_scheduler.yml
+│       │   ├── tasks
+│       │   │   ├── install_apiserver.yml
+│       │   │   ├── install_controller_manager.yml
+│       │   │   ├── install_scheduler.yml
+│       │   │   └── main.yml
+│       │   └── templates
+│       │       ├── encryption-config.yaml.j2
+│       │       ├── kube-apiserver.service.j2
+│       │       ├── kube-apiserver.yaml.j2
+│       │       ├── kube-controller-manager.service.j2
+│       │       └── kube-scheduler.service.j2
+│       ├── etcd
+│       │   ├── defaults
+│       │   │   └── main.yml
+│       │   ├── handlers
+│       │   │   └── restart_etcd.yml
+│       │   ├── tasks
+│       │   │   ├── configure.yml
+│       │   │   ├── main.yml
+│       │   │   └── service.yml
+│       │   └── templates
+│       │       ├── etcd.conf.j2
+│       │       └── etcd.service.j2
+│       ├── hardening
+│       │   ├── defaults
+│       │   │   └── main.yml
+│       │   ├── handlers
+│       │   │   └── main.yml
+│       │   ├── tasks
+│       │   │   ├── configure_audit.yml
+│       │   │   ├── configure_rbac.yml
+│       │   │   ├── etcd_backup.yml
+│       │   │   ├── main.yml
+│       │   │   ├── network_policies.yml
+│       │   │   └── remove_bootstrap.yml
+│       │   └── templates
+│       │       ├── default-network-policy.yaml.j2
+│       │       └── rbac-config.yaml.j2
+│       ├── kubelet
+│       │   ├── defaults
+│       │   │   └── main.yml
+│       │   ├── handlers
+│       │   │   └── restart_kubelet.yml
+│       │   ├── tasks
+│       │   │   ├── configure_kubelet.yml
+│       │   │   └── main.yml
+│       │   └── templates
+│       │       ├── kubelet-config.yaml.j2
+│       │       └── kubelet.service.j2
+│       ├── kube-proxy
+│       │   ├── defaults
+│       │   │   └── main.yml
+│       │   ├── handlers
+│       │   │   └── restart_kube_proxy.yml
+│       │   ├── tasks
+│       │   │   ├── configure_kube_proxy.yml
+│       │   │   └── main.yml
+│       │   └── templates
+│       │       ├── kube-proxy-config.yaml.j2
+│       │       └── kube-proxy.service.j2
+│       └── networking
+│           ├── defaults
+│           │   └── main.yml
+│           ├── handlers
+│           │   └── apply_coredns.yml
+│           ├── tasks
+│           │   ├── deploy_coredns.yml
+│           │   └── main.yml
+│           └── templates
+│               └── coredns-deployment.yaml.j2
+├── ansible-tree.md
+├── check_requirements.sh
+├── combine.sh
+├── hosts.txt
+├── provision_common.sh
+├── provision_jumpbox.sh
+├── README.md
+└── Vagrantfile
+
+61 directories, 113 files
+```
+
+=== ./hosts.txt ===
+
+192.168.56.11 master1
+192.168.56.21 worker1
+192.168.56.22 worker2
+192.168.56.40 jumpbox
+
+=== ./ansible/inventory/group_vars/workers.yml ===
+
+# Kubelet settings
+kubelet_args:
+  - --config={{ config_dir }}/kubelet-config.yaml
+  - --kubeconfig={{ config_dir }}/kubelet.kubeconfig
+  - --tls-cert-file={{ pki_dir }}/kubelet.crt
+  - --tls-private-key-file={{ pki_dir }}/kubelet.key
+
+# Kube-proxy settings
+kube_proxy_args:
+  - --config={{ config_dir }}/kube-proxy-config.yaml
+
+
+=== ./ansible/inventory/group_vars/all.yml ===
+
+# Global paths
+base_dir: /etc/kubernetes
+pki_dir: "{{ base_dir }}/pki"
+manifests_dir: "{{ base_dir }}/manifests"
+config_dir: "{{ base_dir }}/configs"
+
+# Binary paths (source from synced ansible/roles/*/files/)
+cfssl_binary: /vagrant_data/ansible/roles/certificates/files/cfssl
+cfssljson_binary: /vagrant_data/ansible/roles/certificates/files/cfssljson
+etcd_binary: /vagrant_data/ansible/roles/etcd/files/etcd
+etcdctl_binary: /vagrant_data/ansible/roles/etcd/files/etcdctl
+kube_apiserver_binary: /vagrant_data/ansible/roles/control-plane/files/kube-apiserver
+kube_controller_manager_binary: /vagrant_data/ansible/roles/control-plane/files/kube-controller-manager
+kube_scheduler_binary: /vagrant_data/ansible/roles/control-plane/files/kube-scheduler
+kubelet_binary: /vagrant_data/ansible/roles/kubelet/files/kubelet
+kube_proxy_binary: /vagrant_data/ansible/roles/kube-proxy/files/kube-proxy
+runc_binary: /vagrant_data/ansible/roles/container-runtime/files/runc
+containerd_binary: /vagrant_data/ansible/roles/container-runtime/files/containerd
+kubectl_binary: /vagrant_data/ansible/roles/networking/files/kubectl
+flannel_manifest: /vagrant_data/ansible/roles/cni/files/kube-flannel.yml
+
+# Kubernetes versions and settings
+kubernetes_version: 1.34.1
+etcd_version: 3.6.0
+containerd_version: 2.0.0
+cfssl_version: 1.6.5
+
+# Network settings
+pod_network_cidr: 10.244.0.0/16
+service_cidr: 10.96.0.0/12
+api_server_port: 6443
+api_server_endpoint: https://192.168.56.11:6443 # Updated to master1
+cluster_name: kubernetes
+
+# System settings
+swap_enabled: false
+ntp_package: chrony
+
+
+ssh_public_key_path: /vagrant_data/.vagrant/machines/jumpbox/virtualbox/private_key.pub
+common_firewall_ports:
+  - 22/tcp
+  - 6443/tcp
+  - 2379-2380/tcp
+cni_plugin: flannel
+cni_manifest_urls:
+  flannel: https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml
+  calico: https://docs.projectcalico.org/manifests/calico.yaml
+cni_manifest_path: "{{ role_path }}/files/{{ cni_plugin }}.yml"
+cni_configs:
+  flannel:
+    pod_network_cidr: 10.244.0.0/16
+  calico:
+    pod_network_cidr: 192.168.0.0/16
+pod_network_cidr: "{{ cni_configs[cni_plugin].pod_network_cidr }}"
+cni_extra_ports:
+  flannel:
+    - 8472/udp
+  calico:
+    - 179/tcp
+    - 4789/udp
+
+=== ./ansible/inventory/group_vars/masters.yml ===
+
+# Control plane settings
+kube_apiserver_bind_address: 0.0.0.0
+kube_apiserver_port: "{{ api_server_port }}"
+kube_apiserver_args:
+  - --etcd-servers=https://192.168.56.11:2379
+  - --client-ca-file={{ pki_dir }}/ca.crt
+  - --service-account-key-file={{ pki_dir }}/sa.pub
+  - --tls-cert-file={{ pki_dir }}/apiserver.crt
+  - --tls-private-key-file={{ pki_dir }}/apiserver.key
+  - --service-cluster-ip-range={{ service_cidr }}
+  - --encryption-provider-config={{ config_dir }}/encryption-config.yaml
+
+kube_controller_manager_args:
+  - --cluster-signing-cert-file={{ pki_dir }}/ca.crt
+  - --cluster-signing-key-file={{ pki_dir }}/ca.key
+  - --service-account-private-key-file={{ pki_dir }}/sa.key
+  - --root-ca-file={{ pki_dir }}/ca.crt
+
+kube_scheduler_args:
+  - --authentication-kubeconfig={{ config_dir }}/kube-scheduler.kubeconfig
+  - --authorization-kubeconfig={{ config_dir }}/kube-scheduler.kubeconfig
+
+
+=== ./ansible/inventory/group_vars/network.yml ===
+
+network:
+  masters:
+    - ip: 192.168.56.11
+      name: master1
+  workers:
+    - ip: 192.168.56.21
+      name: worker1
+    - ip: 192.168.56.22
+      name: worker2
+  jumpbox:
+    ip: 192.168.56.40
+    name: jumpbox
+  pod_cidr: 10.244.0.0/16
+  service_cidr: 10.96.0.0/12
+  dns_service_ip: "{{ service_cidr | ipaddr('10') }}"
+
+=== ./ansible/inventory/group_vars/etcd.yml ===
+
+# etcd settings for single-node cluster
+etcd_data_dir: /var/lib/etcd
+etcd_args:
+  - --name={{ inventory_hostname }}
+  - --data-dir={{ etcd_data_dir }}
+  - --client-cert-auth=true
+  - --cert-file={{ pki_dir }}/etcd.pem
+  - --key-file={{ pki_dir }}/etcd-key.pem
+  - --trusted-ca-file={{ pki_dir }}/ca.pem
+  - --peer-cert-file={{ pki_dir }}/etcd.pem
+  - --peer-key-file={{ pki_dir }}/etcd-key.pem
+  - --peer-trusted-ca-file={{ pki_dir }}/ca.pem
+  - --initial-cluster=master1=https://192.168.56.11:2380
+  - --initial-cluster-state=new
+  - --listen-client-urls=https://0.0.0.0:2379
+  - --advertise-client-urls=https://{{ ansible_host }}:2379
+  - --listen-peer-urls=https://0.0.0.0:2380
+  - --initial-advertise-peer-urls=https://{{ ansible_host }}:2380
+
+
+=== ./ansible/inventory/host_vars/worker1.yml ===
+
+# Worker node-specific settings
+node_name: worker1
+kubelet_kubeconfig: "{{ config_dir }}/kubelet.kubeconfig"
+kube_proxy_kubeconfig: "{{ config_dir }}/kube-proxy.kubeconfig"
+
+
+=== ./ansible/inventory/host_vars/worker2.yml ===
+
+# Worker node-specific settings
+node_name: worker2
+kubelet_kubeconfig: "{{ config_dir }}/kubelet.kubeconfig"
+kube_proxy_kubeconfig: "{{ config_dir }}/kube-proxy.kubeconfig"
+
+
+=== ./ansible/inventory/host_vars/master1.yml ===
+
+node_name: master1
+api_server_endpoint: https://192.168.56.11:6443
+
+# Control plane kubeconfig paths
+kube_apiserver_kubeconfig: "{{ config_dir }}/kube-apiserver.kubeconfig"
+kube_controller_manager_kubeconfig: "{{ config_dir }}/kube-controller-manager.kubeconfig"
+kube_scheduler_kubeconfig: "{{ config_dir }}/kube-scheduler.kubeconfig"
+
+
+=== ./ansible/inventory/hosts.ini ===
+
+[masters]
+{% for master in network.masters %}
+{{ master.name }} ansible_host={{ master.ip }} ansible_user=ubuntu
+{% endfor %}
+
+[workers]
+{% for worker in network.workers %}
+{{ worker.name }} ansible_host={{ worker.ip }} ansible_user=ubuntu
+{% endfor %}
+
+[jumpbox]
+{{ network.jumpbox.name }} ansible_host={{ network.jumpbox.ip }} ansible_user=ubuntu
+
+[all:vars]
+ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+
+=== ./ansible/playbooks/00-prerequisites.yml ===
+
+- name: Apply prerequisites to all nodes
+  hosts: all
+  become: yes
+  roles:
+    - common
+
+
+=== ./ansible/playbooks/05-cni.yml ===
+
+- name: Configure Flannel CNI
+  hosts: masters
+  become: yes
+  roles:
+    - cni
+
+
+=== ./ansible/playbooks/08-bootstrap.yml ===
+
+- name: Configure bootstrap
+  hosts: masters
+  become: yes
+  roles:
+    - bootstrap
+
+
+=== ./ansible/playbooks/10-hardening.yml ===
+
+- name: Apply security hardening
+  hosts: masters,etcd
+  become: yes
+  roles:
+    - hardening
+
+
+=== ./ansible/playbooks/master.yml ===
+
+- import_playbook: 00-prerequisites.yml
+- import_playbook: 01-certificates.yml
+- import_playbook: 02-etcd-cluster.yml
+- import_playbook: 03-control-plane.yml
+- import_playbook: 04-container-runtime.yml
+- import_playbook: 05-cni.yml
+- import_playbook: 06-kubelet.yml
+- import_playbook: 07-kube-proxy.yml
+- import_playbook: 08-bootstrap.yml
+- import_playbook: 09-networking.yml
+- import_playbook: 10-hardening.yml
+
+
+=== ./ansible/playbooks/02-etcd-cluster.yml ===
+
+- name: Configure etcd cluster
+  hosts: etcd
+  become: yes
+  roles:
+    - etcd
+
+
+=== ./ansible/playbooks/01-certificates.yml ===
+
+- name: Generate and distribute certificates
+  hosts: jumpbox
+  become: yes
+  roles:
+    - certificates
+
+
+=== ./ansible/playbooks/03-control-plane.yml ===
+
+- name: Configure Kubernetes control plane
+  hosts: masters
+  become: yes
+  roles:
+    - control-plane
+
+
+=== ./ansible/playbooks/09-networking.yml ===
+
+- name: Deploy CoreDNS
+  hosts: masters
+  become: yes
+  roles:
+    - networking
+
+
+=== ./ansible/playbooks/06-kubelet.yml ===
+
+- name: Configure kubelet
+  hosts: workers
+  become: yes
+  roles:
+    - kubelet
+
+
+=== ./ansible/playbooks/07-kube-proxy.yml ===
+
+- name: Configure kube-proxy
+  hosts: workers
+  become: yes
+  roles:
+    - kube-proxy
+
+
+=== ./ansible/playbooks/04-container-runtime.yml ===
+
+- name: Configure container runtime
+  hosts: masters,workers
+  become: yes
+  roles:
+    - container-runtime
+
+
+=== ./ansible/roles/kubelet/defaults/main.yml ===
+
+# Kubelet paths
+kubelet_binary_dest: /usr/local/bin/kubelet
+kubelet_config: "{{ config_dir }}/kubelet-config.yaml"
+kubelet_service: /etc/systemd/system/kubelet.service
+
+
+=== ./ansible/roles/kubelet/templates/kubelet.service.j2 ===
+
+[Unit]
+Description=Kubernetes Kubelet
+Documentation=https://kubernetes.io/docs/
+After=containerd.service
+Requires=containerd.service
+
+[Service]
+ExecStart={{ kubelet_binary_dest }} \
+    --node-name={{ node_name }} \
+    {% for arg in kubelet_args %} {{ arg }} {% endfor %}
+Restart=on-failure
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
+
+=== ./ansible/roles/kubelet/templates/kubelet-config.yaml.j2 ===
+
+apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
+authentication:
+  anonymous:
+    enabled: false
+  webhook:
+    enabled: true
+authorization:
+  mode: Webhook
+clusterDomain: cluster.local
+clusterDNS:
+  - "{{ service_cidr | ipaddr('10') }}"
+tlsCertFile: "{{ kubelet_pem }}"
+tlsPrivateKeyFile: "{{ kubelet_key_pem }}"
+cgroupDriver: systemd
+
+
+=== ./ansible/roles/kubelet/meta/main.yml ===
+
+dependencies:
+  - {role: common, tags: ["common"]}
+  - {role: container-runtime, tags: ["container-runtime"]}
+  - {role: certificates, tags: ["certificates"]}
+
+
+=== ./ansible/roles/kubelet/handlers/restart_kubelet.yml ===
+
+- name: Restart kubelet
+  ansible.builtin.systemd:
+    name: kubelet
+    state: restarted
+
+
+=== ./ansible/roles/kubelet/tasks/main.yml ===
+
+- name: Configure kubelet
+  include_tasks: configure_kubelet.yml
+
+
+=== ./ansible/roles/kubelet/tasks/configure_kubelet.yml ===
+
+- name: Copy kubelet binary
+  ansible.builtin.copy:
+    src: "{{ kubelet_binary }}"
+    dest: "{{ kubelet_binary_dest }}"
+    mode: "0755"
+
+- name: Apply kubelet configuration
+  ansible.builtin.template:
+    src: kubelet-config.yaml.j2
+    dest: "{{ kubelet_config }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart kubelet
+
+- name: Apply kubelet service template
+  ansible.builtin.template:
+    src: kubelet.service.j2
+    dest: "{{ kubelet_service }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart kubelet
+
+- name: Ensure kubelet service is enabled and started
+  ansible.builtin.systemd:
+    name: kubelet
+    enabled: yes
+    state: started
+
+
+=== ./ansible/roles/common/defaults/main.yml ===
+
+# Common packages to install
+common_packages:
+  - curl
+  - apt-transport-https
+  - ca-certificates
+
+# Firewall ports to allow
+common_firewall_ports:
+  - 22/tcp # SSH
+  - "{{ api_server_port }}/tcp" # Kubernetes API server
+  - 2379/tcp # etcd client
+  - 2380/tcp # etcd peer
+  - 8472/udp # Flannel VXLAN
+
+
+=== ./ansible/roles/common/templates/limits.conf.j2 ===
+
+* soft nofile 65536
+* hard nofile 65536
+* soft nproc 65536
+* hard nproc 65536
+root soft nofile 65536
+root hard nofile 65536
+root soft nproc 65536
+root hard nproc 65536
+
+=== ./ansible/roles/common/templates/sysctl.conf.j2 ===
+
+# Kubernetes networking requirements
+net.ipv4.ip_forward = 1
+net.ipv6.conf.all.forwarding = 1
+net.bridge.bridge-nf-call-iptables = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+
+=== ./ansible/roles/common/meta/main.yml ===
+
+dependencies: []
+
+
+=== ./ansible/roles/common/handlers/main.yml ===
+
+- name: Reload sysctl
+  ansible.builtin.command:
+    cmd: sysctl --system
+  changed_when: true
+
+
+=== ./ansible/roles/common/tasks/configure_firewall.yml ===
+
+- name: Install ufw
+  ansible.builtin.apt:
+    name: ufw
+    state: present
+
+- name: Allow necessary ports
+  ansible.builtin.ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: "{{ item.split('/')[1] if '/' in item else 'tcp' }}"
+  loop: "{{ common_firewall_ports }}"
+
+- name: Enable ufw
+  ansible.builtin.ufw:
+    state: enabled
+    policy: deny
+
+
+
+
+=== ./ansible/roles/common/tasks/setup_prerequisites.yml ===
+
+
+- name: Install common packages
+  ansible.builtin.apt:
+    name: "{{ common_packages }}"
+    state: present
+    update_cache: yes
+
+- name: Ensure sysctl.conf template is applied
+  ansible.builtin.template:
+    src: sysctl.conf.j2
+    dest: /etc/sysctl.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Reload sysctl
+
+- name: Ensure limits.conf template is applied
+  ansible.builtin.template:
+    src: limits.conf.j2
+    dest: /etc/security/limits.conf
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Ensure swap is disabled
+  ansible.builtin.command:
+    cmd: swapoff -a
+  changed_when: false
+
+- name: Comment out swap entries in fstab
+  ansible.builtin.replace:
+    path: /etc/fstab
+    regexp: '^([^#].*?\sswap\s+.*)$'
+    replace: '# \1'
+
+- name: Ensure chrony is installed
+  ansible.builtin.apt:
+    name: "{{ ntp_package }}"
+    state: present
+
+- name: Ensure chrony is enabled and started
+  ansible.builtin.systemd:
+    name: chrony
+    enabled: yes
+    state: started
+
+=== ./ansible/roles/common/tasks/main.yml ===
+
+- name: Setup system prerequisites
+  include_tasks: setup_prerequisites.yml
+
+- name: Configure firewall
+  include_tasks: configure_firewall.yml
+
+- name: Configure SSH keys
+  include_tasks: ssh_keys.yml
+
+
+=== ./ansible/roles/common/tasks/ssh_keys.yml ===
+
+- name: Ensure SSH directory exists
+  ansible.builtin.file:
+    path: /home/ubuntu/.ssh
+    state: directory
+    owner: ubuntu
+    group: ubuntu
+    mode: "0700"
+  when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers'] or inventory_hostname == 'jumpbox'
+
+- name: Deploy Vagrant SSH public key
+  ansible.builtin.authorized_key:
+    user: ubuntu
+    state: present
+    key: "{{ lookup('file', ssh_public_key_path) }}"
+  when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers'] or inventory_hostname == 'jumpbox' and ssh_public_key_path is defined
+  tags: ssh
+
+
+=== ./ansible/roles/container-runtime/defaults/main.yml ===
+
+# Container runtime paths
+containerd_binary_dest: /usr/local/bin/containerd
+runc_binary_dest: /usr/local/bin/runc
+containerd_config: /etc/containerd/config.toml
+containerd_service: /etc/systemd/system/containerd.service
+containerd_package: containerd.io
+
+
+=== ./ansible/roles/container-runtime/templates/containerd-config.toml.j2 ===
+
+version = 2
+[plugins]
+  [plugins."io.containerd.grpc.v1.cri"]
+    sandbox_image = "registry.k8s.io/pause:3.9"
+    [plugins."io.containerd.grpc.v1.cri".containerd]
+      [plugins."io.containerd.grpc.v1.cri".containerd.runtimes]
+        [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
+          runtime_type = "io.containerd.runc.v2"
+          [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+            SystemdCgroup = true
+
+=== ./ansible/roles/container-runtime/meta/main.yml ===
+
+dependencies:
+  - {role: common, tags: ["common"]}
+
+
+=== ./ansible/roles/container-runtime/handlers/restart_containerd.yml ===
+
+- name: Restart containerd
+  ansible.builtin.systemd:
+    name: containerd
+    state: restarted
+
+
+=== ./ansible/roles/container-runtime/tasks/configure_containerd.yml ===
+
+- name: Copy containerd binary
+  ansible.builtin.copy:
+    src: "{{ containerd_binary }}"
+    dest: "{{ containerd_binary_dest }}"
+    mode: "0755"
+
+- name: Copy runc binary
+  ansible.builtin.copy:
+    src: "{{ runc_binary }}"
+    dest: "{{ runc_binary_dest }}"
+    mode: "0755"
+
+- name: Ensure containerd configuration directory exists
+  ansible.builtin.file:
+    path: /etc/containerd
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Apply containerd configuration
+  ansible.builtin.template:
+    src: containerd-config.toml.j2
+    dest: "{{ containerd_config }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart containerd
+
+- name: Ensure containerd service file exists
+  ansible.builtin.copy:
+    content: |
+      [Unit]
+      Description=containerd container runtime
+      Documentation=https://containerd.io
+      After=network.target
+
+      [Service]
+      ExecStart={{ containerd_binary_dest }} --config {{ containerd_config }}
+      Restart=on-failure
+      LimitNOFILE=65536
+
+      [Install]
+      WantedBy=multi-user.target
+    dest: "{{ containerd_service }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart containerd
+
+- name: Ensure containerd service is enabled and started
+  ansible.builtin.systemd:
+    name: containerd
+    enabled: yes
+    state: started
+
+
+=== ./ansible/roles/container-runtime/tasks/main.yml ===
+
+- name: Configure containerd
+  include_tasks: configure_containerd.yml
+
+
+=== ./ansible/roles/etcd/defaults/main.yml ===
+
+# etcd paths
+etcd_binary_dest: /usr/local/bin/etcd
+etcdctl_binary_dest: /usr/local/bin/etcdctl
+etcd_config: /etc/etcd/etcd.conf
+etcd_service: /etc/systemd/system/etcd.service
+
+
+=== ./ansible/roles/etcd/templates/etcd.conf.j2 ===
+
+ETCD_ARGS="{% for arg in etcd_args %} {{ arg }}{% endfor %}"
+
+=== ./ansible/roles/etcd/templates/etcd.service.j2 ===
+
+[Unit]
+Description=etcd
+Documentation=https://etcd.io/docs/
+After=network.target
+
+[Service]
+EnvironmentFile={{ etcd_config }}
+ExecStart={{ etcd_binary_dest }} $ETCD_ARGS
+Restart=on-failure
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
+
+=== ./ansible/roles/etcd/meta/main.yml ===
+
+dependencies:
+  - {role: common, tags: ["common"]}
+  - {role: certificates, tags: ["certificates"]}
+
+
+=== ./ansible/roles/etcd/handlers/restart_etcd.yml ===
+
+- name: Restart etcd
+  ansible.builtin.systemd:
+    name: etcd
+    state: restarted
+
+
+=== ./ansible/roles/etcd/tasks/service.yml ===
+
+- name: Apply etcd service template
+  ansible.builtin.template:
+    src: etcd.service.j2
+    dest: "{{ etcd_service }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart etcd
+
+- name: Ensure etcd service is enabled and started
+  ansible.builtin.systemd:
+    name: etcd
+    enabled: yes
+    state: started
+
+
+=== ./ansible/roles/etcd/tasks/main.yml ===
+
+- name: Configure etcd
+  include_tasks: configure.yml
+
+- name: Set up etcd service
+  include_tasks: service.yml
+
+
+=== ./ansible/roles/etcd/tasks/configure.yml ===
+
+- name: Copy etcd binary
+  ansible.builtin.copy:
+    src: "{{ etcd_binary }}"
+    dest: "{{ etcd_binary_dest }}"
+    mode: "0755"
+
+- name: Copy etcdctl binary
+  ansible.builtin.copy:
+    src: "{{ etcdctl_binary }}"
+    dest: "{{ etcdctl_binary_dest }}"
+    mode: "0755"
+
+- name: Ensure etcd data directory exists
+  ansible.builtin.file:
+    path: "{{ etcd_data_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Apply etcd configuration
+  ansible.builtin.template:
+    src: etcd.conf.j2
+    dest: "{{ etcd_config }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart etcd
+
+
+=== ./ansible/roles/control-plane/defaults/main.yml ===
+
+# Control plane paths
+apiserver_binary_dest: /usr/local/bin/kube-apiserver
+controller_manager_binary_dest: /usr/local/bin/kube-controller-manager
+scheduler_binary_dest: /usr/local/bin/kube-scheduler
+apiserver_service: /etc/systemd/system/kube-apiserver.service
+controller_manager_service: /etc/systemd/system/kube-controller-manager.service
+scheduler_service: /etc/systemd/system/kube-scheduler.service
+encryption_config: "{{ config_dir }}/encryption-config.yaml"
+
+
+=== ./ansible/roles/control-plane/templates/kube-apiserver.service.j2 ===
+
+[Unit]
+Description=Kubernetes API Server
+Documentation=https://kubernetes.io/docs/
+After=network.target
+
+[Service]
+ExecStart={{ apiserver_binary_dest }} \
+    --bind-address={{ kube_apiserver_bind_address }} \
+    --secure-port={{ kube_apiserver_port }} \
+    {% for arg in kube_apiserver_args %} {{ arg }} {% endfor %}
+Restart=on-failure
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
+
+=== ./ansible/roles/control-plane/templates/kube-apiserver.yaml.j2 ===
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kube-apiserver
+  namespace: kube-system
+spec:
+  containers:
+  - name: kube-apiserver
+    image: k8s.gcr.io/kube-apiserver:v{{ kubernetes_version }}
+    command:
+    - kube-apiserver
+    - --advertise-address={{ ansible_host }}
+    - --bind-address={{ kube_apiserver_bind_address }}
+    - --secure-port={{ kube_apiserver_port }}
+    {% for arg in kube_apiserver_args %}
+    - {{ arg }}
+    {% endfor %}
+    volumeMounts:
+    - name: pki
+      mountPath: {{ pki_dir }}
+      readOnly: true
+    - name: config
+      mountPath: {{ config_dir }}
+      readOnly: true
+  volumes:
+  - name: pki
+    hostPath:
+      path: {{ pki_dir }}
+  - name: config
+    hostPath:
+      path: {{ config_dir }}
+
+=== ./ansible/roles/control-plane/templates/kube-controller-manager.service.j2 ===
+
+[Unit]
+Description=Kubernetes Controller Manager
+Documentation=https://kubernetes.io/docs/
+After=network.target
+
+[Service]
+ExecStart={{ controller_manager_binary_dest }} \
+    {% for arg in kube_controller_manager_args %} {{ arg }} {% endfor %}
+Restart=on-failure
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
+
+=== ./ansible/roles/control-plane/templates/encryption-config.yaml.j2 ===
+
+
+apiVersion: apiserver.config.k8s.io/v1
+kind: EncryptionConfiguration
+resources:
+  - resources:
+      - secrets
+    providers:
+      - aescbc:
+          keys:
+            - name: key1
+              secret: "{{ lookup('password', '/dev/shm/encryption_key chars=ascii_letters,digits length=32') | b64encode }}"
+      - identity: {}
+
+
+=== ./ansible/roles/control-plane/templates/kube-scheduler.service.j2 ===
+
+[Unit]
+Description=Kubernetes Scheduler
+Documentation=https://kubernetes.io/docs/
+After=network.target
+
+[Service]
+ExecStart={{ scheduler_binary_dest }} \
+    {% for arg in kube_scheduler_args %} {{ arg }} {% endfor %}
+Restart=on-failure
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
+
+=== ./ansible/roles/control-plane/meta/main.yml ===
+
+dependencies:
+  - {role: common, tags: ["common"]}
+  - {role: certificates, tags: ["certificates"]}
+  - {role: etcd, tags: ["etcd"]}
+
+
+=== ./ansible/roles/control-plane/handlers/restart_scheduler.yml ===
+
+- name: Restart kube-scheduler
+  ansible.builtin.systemd:
+    name: kube-scheduler
+    state: restarted
+
+
+=== ./ansible/roles/control-plane/handlers/restart_apiserver.yml ===
+
+- name: Restart kube-apiserver
+  ansible.builtin.systemd:
+    name: kube-apiserver
+    state: restarted
+
+
+=== ./ansible/roles/control-plane/handlers/restart_controller_manager.yml ===
+
+- name: Restart kube-controller-manager
+  ansible.builtin.systemd:
+    name: kube-controller-manager
+    state: restarted
+
+
+=== ./ansible/roles/control-plane/tasks/install_scheduler.yml ===
+
+- name: Copy kube-scheduler binary
+  ansible.builtin.copy:
+    src: "{{ kube_scheduler_binary }}"
+    dest: "{{ scheduler_binary_dest }}"
+    mode: "0755"
+
+- name: Apply kube-scheduler service template
+  ansible.builtin.template:
+    src: kube-scheduler.service.j2
+    dest: "{{ scheduler_service }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart kube-scheduler
+
+- name: Ensure kube-scheduler service is enabled and started
+  ansible.builtin.systemd:
+    name: kube-scheduler
+    enabled: yes
+    state: started
+
+
+=== ./ansible/roles/control-plane/tasks/install_apiserver.yml ===
+
+- name: Copy kube-apiserver binary
+  ansible.builtin.copy:
+    src: "{{ kube_apiserver_binary }}"
+    dest: "{{ apiserver_binary_dest }}"
+    mode: "0755"
+
+- name: Apply kube-apiserver service template
+  ansible.builtin.template:
+    src: kube-apiserver.service.j2
+    dest: "{{ apiserver_service }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart kube-apiserver
+
+- name: Apply encryption configuration
+  ansible.builtin.template:
+    src: encryption-config.yaml.j2
+    dest: "{{ encryption_config }}"
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Ensure kube-apiserver service is enabled and started
+  ansible.builtin.systemd:
+    name: kube-apiserver
+    enabled: yes
+    state: started
+
+
+=== ./ansible/roles/control-plane/tasks/main.yml ===
+
+- name: Install kube-apiserver
+  include_tasks: install_apiserver.yml
+
+- name: Install kube-controller-manager
+  include_tasks: install_controller_manager.yml
+
+- name: Install kube-scheduler
+  include_tasks: install_scheduler.yml
+
+
+=== ./ansible/roles/control-plane/tasks/install_controller_manager.yml ===
+
+- name: Copy kube-controller-manager binary
+  ansible.builtin.copy:
+    src: "{{ kube_controller_manager_binary }}"
+    dest: "{{ controller_manager_binary_dest }}"
+    mode: "0755"
+
+- name: Apply kube-controller-manager service template
+  ansible.builtin.template:
+    src: kube-controller-manager.service.j2
+    dest: "{{ controller_manager_service }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart kube-controller-manager
+
+- name: Ensure kube-controller-manager service is enabled and started
+  ansible.builtin.systemd:
+    name: kube-controller-manager
+    enabled: yes
+    state: started
+
+
+=== ./ansible/roles/certificates/defaults/main.yml ===
+
+# Certificate paths
+ca_config: "{{ role_path }}/files/ca-config.json"
+ca_csr: "{{ role_path }}/files/ca-csr.json"
+kubernetes_csr: "{{ role_path }}/files/kubernetes-csr.json"
+admin_csr: "{{ role_path }}/files/admin-csr.json"
+kube_controller_manager_csr: "{{ role_path }}/files/kube-controller-manager-csr.json"
+kube_scheduler_csr: "{{ role_path }}/files/kube-scheduler-csr.json"
+kubelet_csr: "{{ role_path }}/files/kubelet-csr.json"
+etcd_csr: "{{ role_path }}/files/etcd-csr.json"
+service_account_csr: "{{ role_path }}/files/service-account-csr.json"
+
+# Certificate output paths
+ca_pem: "{{ pki_dir }}/ca.pem"
+ca_key_pem: "{{ pki_dir }}/ca-key.pem"
+kubernetes_pem: "{{ pki_dir }}/kubernetes.pem"
+kubernetes_key_pem: "{{ pki_dir }}/kubernetes-key.pem"
+admin_pem: "{{ pki_dir }}/admin.pem"
+admin_key_pem: "{{ pki_dir }}/admin-key.pem"
+kube_controller_manager_pem: "{{ pki_dir }}/kube-controller-manager.pem"
+kube_controller_manager_key_pem: "{{ pki_dir }}/kube-controller-manager-key.pem"
+kube_scheduler_pem: "{{ pki_dir }}/kube-scheduler.pem"
+kube_scheduler_key_pem: "{{ pki_dir }}/kube-scheduler-key.pem"
+kubelet_pem: "{{ pki_dir }}/kubelet.pem"
+kubelet_key_pem: "{{ pki_dir }}/kubelet-key.pem"
+etcd_pem: "{{ etcd_cert_dir }}/etcd.pem"
+etcd_key_pem: "{{ etcd_cert_dir }}/etcd-key.pem"
+service_account_pem: "{{ pki_dir }}/service-account.pem"
+service_account_key_pem: "{{ pki_dir }}/service-account-key.pem"
+
+# CFSSL settings
+cfssl_binary: "{{ cfssl_binary }}"
+cfssljson_binary: "{{ cfssljson_binary }}"
+ca_profile: kubernetes
+
+
+=== ./ansible/roles/certificates/meta/main.yml ===
+
+dependencies:
+  - {role: common, tags: ["common"]}
+
+
+=== ./ansible/roles/certificates/handlers/main.yml ===
+
+# No handlers needed for certificates
+
+
+=== ./ansible/roles/certificates/tasks/generate_worker_certs.yml ===
+
+- name: Generate kubelet certificate and key
+  ansible.builtin.shell: "{{ cfssl_binary }} gencert -ca={{ role_path }}/files/ca.pem -ca-key={{ role_path }}/files/ca-key.pem -config={{ ca_config }} -profile={{ ca_profile }} {{ kubelet_csr }} | {{ cfssljson_binary }} -bare kubelet"
+  args:
+    chdir: "{{ role_path }}/files"
+    creates: "{{ role_path }}/files/kubelet.pem"
+  when: not ansible_check_mode
+
+- name: Copy kubelet certificate to node
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/kubelet.pem"
+    dest: "{{ kubelet_pem }}"
+    mode: "0644"
+
+- name: Copy kubelet key to node
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/kubelet-key.pem"
+    dest: "{{ kubelet_key_pem }}"
+    mode: "0600"
+
+
+=== ./ansible/roles/certificates/tasks/generate_controller_certs.yml ===
+
+- name: Generate kube-controller-manager certificate and key
+  ansible.builtin.shell: "{{ cfssl_binary }} gencert -ca={{ role_path }}/files/ca.pem -ca-key={{ role_path }}/files/ca-key.pem -config={{ ca_config }} -profile={{ ca_profile }} {{ kube_controller_manager_csr }} | {{ cfssljson_binary }} -bare kube-controller-manager"
+  args:
+    chdir: "{{ role_path }}/files"
+    creates: "{{ role_path }}/files/kube-controller-manager.pem"
+  when: not ansible_check_mode
+
+- name: Copy kube-controller-manager certificate to node
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/kube-controller-manager.pem"
+    dest: "{{ kube_controller_manager_pem }}"
+    mode: "0644"
+
+- name: Copy kube-controller-manager key to node
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/kube-controller-manager-key.pem"
+    dest: "{{ kube_controller_manager_key_pem }}"
+    mode: "0600"
+
+- name: Generate kube-scheduler certificate and key
+  ansible.builtin.shell: "{{ cfssl_binary }} gencert -ca={{ role_path }}/files/ca.pem -ca-key={{ role_path }}/files/ca-key.pem -config={{ ca_config }} -profile={{ ca_profile }} {{ kube_scheduler_csr }} | {{ cfssljson_binary }} -bare kube-scheduler"
+  args:
+    chdir: "{{ role_path }}/files"
+    creates: "{{ role_path }}/files/kube-scheduler.pem"
+  when: not ansible_check_mode
+
+- name: Copy kube-scheduler certificate to node
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/kube-scheduler.pem"
+    dest: "{{ kube_scheduler_pem }}"
+    mode: "0644"
+
+- name: Copy kube-scheduler key to node
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/kube-scheduler-key.pem"
+    dest: "{{ kube_scheduler_key_pem }}"
+    mode: "0600"
+
+
+=== ./ansible/roles/certificates/tasks/main.yml ===
+
+- name: Generate CA certificate
+  include_tasks: generate_ca.yml
+
+- name: Generate admin client certificate
+  include_tasks: generate_admin_cert.yml
+
+- name: Generate controller certificates
+  include_tasks: generate_controller_certs.yml
+
+- name: Generate worker certificates
+  include_tasks: generate_worker_certs.yml
+
+- name: Generate service account key pair
+  include_tasks: generate_service_account_key.yml
+
+- name: Copy certificates to nodes
+  include_tasks: copy_certs.yml
+
+
+=== ./ansible/roles/certificates/tasks/generate_admin_cert.yml ===
+
+- name: Generate admin certificate and key
+  ansible.builtin.shell: "{{ cfssl_binary }} gencert -ca={{ role_path }}/files/ca.pem -ca-key={{ role_path }}/files/ca-key.pem -config={{ ca_config }} -profile={{ ca_profile }} {{ admin_csr }} | {{ cfssljson_binary }} -bare admin"
+  args:
+    chdir: "{{ role_path }}/files"
+    creates: "{{ role_path }}/files/admin.pem"
+  when: not ansible_check_mode
+
+- name: Copy admin certificate to node
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/admin.pem"
+    dest: "{{ admin_pem }}"
+    mode: "0644"
+
+- name: Copy admin key to node
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/admin-key.pem"
+    dest: "{{ admin_key_pem }}"
+    mode: "0600"
+
+
+=== ./ansible/roles/certificates/tasks/copy_certs.yml ===
+
+- name: Copy all certificates to PKI directory
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - {src: "{{ role_path }}/files/ca.pem", dest: "{{ ca_pem }}", mode: "0644"}
+    - {
+        src: "{{ role_path }}/files/ca-key.pem",
+        dest: "{{ ca_key_pem }}",
+        mode: "0600",
+      }
+    - {
+        src: "{{ role_path }}/files/kubernetes.pem",
+        dest: "{{ kubernetes_pem }}",
+        mode: "0644",
+      }
+    - {
+        src: "{{ role_path }}/files/kubernetes-key.pem",
+        dest: "{{ kubernetes_key_pem }}",
+        mode: "0600",
+      }
+    - {
+        src: "{{ role_path }}/files/admin.pem",
+        dest: "{{ admin_pem }}",
+        mode: "0644",
+      }
+    - {
+        src: "{{ role_path }}/files/admin-key.pem",
+        dest: "{{ admin_key_pem }}",
+        mode: "0600",
+      }
+    - {
+        src: "{{ role_path }}/files/kube-controller-manager.pem",
+        dest: "{{ kube_controller_manager_pem }}",
+        mode: "0644",
+      }
+    - {
+        src: "{{ role_path }}/files/kube-controller-manager-key.pem",
+        dest: "{{ kube_controller_manager_key_pem }}",
+        mode: "0600",
+      }
+    - {
+        src: "{{ role_path }}/files/kube-scheduler.pem",
+        dest: "{{ kube_scheduler_pem }}",
+        mode: "0644",
+      }
+    - {
+        src: "{{ role_path }}/files/kube-scheduler-key.pem",
+        dest: "{{ kube_scheduler_key_pem }}",
+        mode: "0600",
+      }
+    - {
+        src: "{{ role_path }}/files/kubelet.pem",
+        dest: "{{ kubelet_pem }}",
+        mode: "0644",
+      }
+    - {
+        src: "{{ role_path }}/files/kubelet-key.pem",
+        dest: "{{ kubelet_key_pem }}",
+        mode: "0600",
+      }
+    - {
+        src: "{{ role_path }}/files/service-account.pem",
+        dest: "{{ service_account_pem }}",
+        mode: "0644",
+      }
+    - {
+        src: "{{ role_path }}/files/service-account-key.pem",
+        dest: "{{ service_account_key_pem }}",
+        mode: "0600",
+      }
+
+- name: Copy etcd certificates to etcd directory
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - {
+        src: "{{ role_path }}/files/etcd.pem",
+        dest: "{{ etcd_pem }}",
+        mode: "0644",
+      }
+    - {
+        src: "{{ role_path }}/files/etcd-key.pem",
+        dest: "{{ etcd_key_pem }}",
+        mode: "0600",
+      }
+  when: inventory_hostname in groups['etcd']
+
+
+=== ./ansible/roles/certificates/tasks/generate_ca.yml ===
+
+- name: Generate CA certificate and key
+  ansible.builtin.shell: "{{ cfssl_binary }} gencert -initca {{ ca_csr }} | {{ cfssljson_binary }} -bare ca"
+  args:
+    chdir: "{{ role_path }}/files"
+    creates: "{{ role_path }}/files/ca.pem"
+  when: not ansible_check_mode
+
+- name: Copy CA certificate to node
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/ca.pem"
+    dest: "{{ ca_pem }}"
+    mode: "0644"
+
+- name: Copy CA key to node
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/ca-key.pem"
+    dest: "{{ ca_key_pem }}"
+    mode: "0600"
+
+
+=== ./ansible/roles/certificates/tasks/generate_serviceaccount_key.yml ===
+
+- name: Generate service account certificate and key
+  ansible.builtin.shell: "{{ cfssl_binary }} gencert -ca={{ role_path }}/files/ca.pem -ca-key={{ role_path }}/files/ca-key.pem -config={{ ca_config }} -profile={{ ca_profile }} {{ service_account_csr }} | {{ cfssljson_binary }} -bare service-account"
+  args:
+    chdir: "{{ role_path }}/files"
+    creates: "{{ role_path }}/files/service-account.pem"
+  when: not ansible_check_mode
+
+- name: Copy service account certificate to node
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/service-account.pem"
+    dest: "{{ service_account_pem }}"
+    mode: "0644"
+
+- name: Copy service account key to node
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/service-account-key.pem"
+    dest: "{{ service_account_key_pem }}"
+    mode: "0600"
+
+
+=== ./ansible/roles/kube-proxy/defaults/main.yml ===
+
+
+
+=== ./ansible/roles/kube-proxy/templates/kube-proxy.service.j2 ===
+
+[Unit]
+Description=Kubernetes Kube-Proxy
+Documentation=https://kubernetes.io/docs/
+After=network.target
+
+[Service]
+ExecStart={{ kube_proxy_binary_dest }} \
+    {% for arg in kube_proxy_args %} {{ arg }} {% endfor %}
+Restart=on-failure
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
+
+=== ./ansible/roles/kube-proxy/templates/kube-proxy-config.yaml.j2 ===
+
+apiVersion: kubeproxy.config.k8s.io/v1alpha1
+kind: KubeProxyConfiguration
+mode: iptables
+clusterCIDR: "{{ pod_network_cidr }}"
+
+=== ./ansible/roles/kube-proxy/meta/main.yml ===
+
+dependencies:
+  - {role: common, tags: ["common"]}
+  - {role: certificates, tags: ["certificates"]}
+
+
+=== ./ansible/roles/kube-proxy/handlers/restart_kube_proxy.yml ===
+
+- name: Restart kube-proxy
+  ansible.builtin.systemd:
+    name: kube-proxy
+    state: restarted
+
+
+=== ./ansible/roles/kube-proxy/tasks/main.yml ===
+
+- name: Configure kube-proxy
+  include_tasks: configure_kube_proxy.yml
+
+
+=== ./ansible/roles/kube-proxy/tasks/configure_kube_proxy.yml ===
+
+- name: Copy kube-proxy binary
+  ansible.builtin.copy:
+    src: "{{ kube_proxy_binary }}"
+    dest: "{{ kube_proxy_binary_dest }}"
+    mode: "0755"
+
+- name: Apply kube-proxy configuration
+  ansible.builtin.template:
+    src: kube-proxy-config.yaml.j2
+    dest: "{{ kube_proxy_config }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart kube-proxy
+
+- name: Apply kube-proxy service template
+  ansible.builtin.template:
+    src: kube-proxy.service.j2
+    dest: "{{ kube_proxy_service }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart kube-proxy
+
+- name: Ensure kube-proxy service is enabled and started
+  ansible.builtin.systemd:
+    name: kube-proxy
+    enabled: yes
+    state: started
+
+
+=== ./ansible/roles/cni/defaults/main.yml ===
+
+# Flannel paths
+flannel_manifest_dest: "{{ config_dir }}/kube-flannel.yml"
+kubectl_binary: "{{ kubectl_binary }}"
+
+
+=== ./ansible/roles/cni/meta/main.yml ===
+
+dependencies:
+  - {role: common, tags: ["common"]}
+
+
+=== ./ansible/roles/cni/handlers/apply_flannel.yml ===
+
+- name: Apply Flannel
+  ansible.builtin.command:
+    cmd: "{{ kubectl_binary }} apply -f {{ flannel_manifest_dest }}"
+  changed_when: true
+  when: inventory_hostname == 'master1'
+
+
+=== ./ansible/roles/cni/tasks/main.yml ===
+
+- name: Configure Flannel CNI
+  include_tasks: configure_flannel.yml
+
+
+=== ./ansible/roles/cni/tasks/configure_flannel.yml ===
+
+- name: Copy Flannel manifest to master node
+  ansible.builtin.copy:
+    src: "{{ flannel_manifest }}"
+    dest: "{{ flannel_manifest_dest }}"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Apply Flannel manifest
+  ansible.builtin.command:
+    cmd: "{{ kubectl_binary }} apply -f {{ flannel_manifest_dest }}"
+  changed_when: true
+  when: inventory_hostname == 'master1' # Apply only on one master to avoid conflicts
+  notify: Apply Flannel
+
+
+=== ./ansible/roles/bootstrap/defaults/main.yml ===
+
+# Bootstrap settings
+bootstrap_token: "{{ lookup('password', '/dev/shm/bootstrap_token chars=ascii_lowercase,digits length=16') }}"
+bootstrap_token_id: "{{ bootstrap_token[:6] }}"
+bootstrap_token_secret: "{{ bootstrap_token[6:] }}"
+bootstrap_kubeconfig: "{{ config_dir }}/bootstrap.kubeconfig"
+
+
+=== ./ansible/roles/bootstrap/templates/kube-proxy.kubeconfig.j2 ===
+
+apiVersion: v1
+kind: Config
+clusters:
+- cluster:
+    certificate-authority: {{ pki_dir }}/ca.crt
+    server: https://192.168.56.11:6443
+  name: kubernetes
+contexts:
+- context:
+    cluster: kubernetes
+    user: kube-proxy
+  name: kube-proxy@kubernetes
+current-context: kube-proxy@kubernetes
+users:
+- name: kube-proxy
+  user:
+    client-certificate: {{ pki_dir }}/kube-proxy.crt
+    client-key: {{ pki_dir }}/kube-proxy.key
+
+=== ./ansible/roles/bootstrap/templates/admin.kubeconfig.j2 ===
+
+apiVersion: v1
+kind: Config
+clusters:
+- cluster:
+    certificate-authority: {{ pki_dir }}/ca.crt
+    server: https://192.168.56.11:6443
+  name: kubernetes
+contexts:
+- context:
+    cluster: kubernetes
+    user: kubernetes-admin
+  name: kubernetes-admin@kubernetes
+current-context: kubernetes-admin@kubernetes
+users:
+- name: kubernetes-admin
+  user:
+    client-certificate: {{ pki_dir }}/admin.crt
+    client-key: {{ pki_dir }}/admin.key
+
+=== ./ansible/roles/bootstrap/templates/kubelet.kubeconfig.j2 ===
+
+apiVersion: v1
+kind: Config
+clusters:
+- cluster:
+    certificate-authority: {{ pki_dir }}/ca.crt
+    server: https://192.168.56.11:6443
+  name: kubernetes
+contexts:
+- context:
+    cluster: kubernetes
+    user: kubelet
+  name: kubelet@kubernetes
+current-context: kubelet@kubernetes
+users:
+- name: kubelet
+  user:
+    client-certificate: {{ pki_dir }}/kubelet.crt
+    client-key: {{ pki_dir }}/kubelet.key
+
+=== ./ansible/roles/bootstrap/templates/bootstrap.kubeconfig.j2 ===
+
+apiVersion: v1
+kind: Config
+clusters:
+- cluster:
+    certificate-authority: {{ pki_dir }}/ca.crt
+    server: https://192.168.56.11:6443
+  name: kubernetes
+contexts:
+- context:
+    cluster: kubernetes
+    user: bootstrap
+  name: bootstrap@kubernetes
+current-context: bootstrap@kubernetes
+users:
+- name: bootstrap
+  user:
+    token: "{{ bootstrap_token_id }}.{{ bootstrap_token_secret }}"
+
+=== ./ansible/roles/bootstrap/meta/main.yml ===
+
+dependencies:
+  - {role: common, tags: ["common"]}
+  - {role: control-plane, tags: ["control-plane"]}
+
+
+=== ./ansible/roles/bootstrap/handlers/approve_csrs.yml ===
+
+- name: Approve CSRs
+  ansible.builtin.command:
+    cmd: "{{ kubectl_binary_dest }} certificate approve {{ item }}"
+  loop: "{{ q('kubernetes.core.k8s', api_version='certificates.k8s.io/v1', kind='CertificateSigningRequest') | json_query('[].metadata.name') }}"
+  changed_when: true
+  when: inventory_hostname == 'master1'
+
+
+=== ./ansible/roles/bootstrap/tasks/main.yml ===
+
+- name: Configure bootstrap
+  include_tasks: configure_bootstrap.yml
+
+- name: Generate kubeconfig files
+  include_tasks: generate_kubeconfigs.yml
+
+
+=== ./ansible/roles/bootstrap/tasks/configure_bootstrap.yml ===
+
+- name: Create bootstrap token
+  ansible.builtin.command:
+    cmd: "{{ kubectl_binary_dest }} -n kube-system create secret generic bootstrap-token-{{ bootstrap_token_id }} --type=bootstrap.kubernetes.io/token --metadata=namespace:kube-system --from-literal=token-id={{ bootstrap_token_id }} --from-literal=token-secret={{ bootstrap_token_secret }} --from-literal=usage-bootstrap-authentication=true --from-literal=usage-bootstrap-signing=true"
+  changed_when: true
+  when: inventory_hostname == 'master1'
+
+- name: Create bootstrap kubeconfig
+  ansible.builtin.template:
+    src: bootstrap.kubeconfig.j2
+    dest: "{{ bootstrap_kubeconfig }}"
+    owner: root
+    group: root
+    mode: "0600"
+  when: inventory_hostname in groups['workers']
+
+- name: Approve CSRs
+  ansible.builtin.command:
+    cmd: "{{ kubectl_binary_dest }} certificate approve {{ item }}"
+  loop: "{{ q('kubernetes.core.k8s', api_version='certificates.k8s.io/v1', kind='CertificateSigningRequest') | json_query('[].metadata.name') }}"
+  changed_when: true
+  when: inventory_hostname == 'master1'
+  notify: Approve CSRs
+
+
+=== ./ansible/roles/bootstrap/tasks/generate_kubeconfigs.yml ===
+
+- name: Generate admin kubeconfig
+  ansible.builtin.template:
+    src: admin.kubeconfig.j2
+    dest: "{{ config_dir }}/admin.kubeconfig"
+    owner: root
+    group: root
+    mode: "0600"
+  when: inventory_hostname in groups['masters'] or inventory_hostname in groups['jumpbox']
+
+- name: Generate kubelet kubeconfig
+  ansible.builtin.template:
+    src: kubelet.kubeconfig.j2
+    dest: "{{ config_dir }}/kubelet.kubeconfig"
+    owner: root
+    group: root
+    mode: "0600"
+  when: inventory_hostname in groups['workers']
+
+- name: Generate kube-proxy kubeconfig
+  ansible.builtin.template:
+    src: kube-proxy.kubeconfig.j2
+    dest: "{{ config_dir }}/kube-proxy.kubeconfig"
+    owner: root
+    group: root
+    mode: "0600"
+  when: inventory_hostname in groups['workers']
+
+
+=== ./ansible/roles/hardening/defaults/main.yml ===
+
+audit_policy: "{{ config_dir }}/audit-policy.yaml"
+network_policy: "{{ config_dir }}/default-network-policy.yaml"
+rbac_config: "{{ config_dir }}/rbac-config.yaml"
+etcd_backup_dir: /var/backups/etcd
+etcd_backup_script: /usr/local/bin/etcd-backup.sh
+
+
+=== ./ansible/roles/hardening/templates/default-network-policy.yaml.j2 ===
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: default
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+  egress:
+  - ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+    to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+
+=== ./ansible/roles/hardening/templates/rbac-config.yaml.j2 ===
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: restricted-cluster-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: User
+  name: admin
+  apiGroup: rbac.authorization.k8s.io
+
+=== ./ansible/roles/hardening/meta/main.yml ===
+
+dependencies:
+  - {role: common, tags: ["common"]}
+  - {role: control-plane, tags: ["control-plane"]}
+  - {role: networking, tags: ["networking"]}
+
+
+=== ./ansible/roles/hardening/handlers/main.yml ===
+
+
+
+=== ./ansible/roles/hardening/.vscode/settings.json ===
+
+{
+  "jira-plugin.workingProject": ""
+}
+
+=== ./ansible/roles/hardening/tasks/remove_bootstrap.yml ===
+
+- name: Remove bootstrap token secret
+  ansible.builtin.command:
+    cmd: "{{ kubectl_binary_dest }} -n kube-system delete secret bootstrap-token-{{ bootstrap_token_id }}"
+  changed_when: true
+  when: inventory_hostname == 'master1'
+
+
+=== ./ansible/roles/hardening/tasks/main.yml ===
+
+- name: Remove bootstrap tokens
+  include_tasks: remove_bootstrap.yml
+
+- name: Configure audit policy
+  include_tasks: configure_audit.yml
+
+- name: Configure network policies
+  include_tasks: network_policies.yml
+
+- name: Configure RBAC
+  include_tasks: configure_rbac.yml
+
+- name: Configure etcd backup
+  include_tasks: etcd_backup.yml
+
+
+=== ./ansible/roles/hardening/tasks/configure_audit.yml ===
+
+- name: Apply audit policy
+  ansible.builtin.copy:
+    content: |
+      apiVersion: audit.k8s.io/v1
+      kind: Policy
+      rules:
+      - level: Metadata
+    dest: "{{ audit_policy }}"
+    owner: root
+    group: root
+    mode: "0644"
+  when: inventory_hostname in groups['masters']
+
+
+=== ./ansible/roles/hardening/tasks/configure_rbac.yml ===
+
+- name: Apply RBAC configuration
+  ansible.builtin.template:
+    src: rbac-config.yaml.j2
+    dest: "{{ rbac_config }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Apply RBAC
+  when: inventory_hostname == 'master1'
+
+- name: Apply RBAC policy
+  ansible.builtin.command:
+    cmd: "{{ kubectl_binary_dest }} apply -f {{ rbac_config }}"
+  changed_when: true
+  when: inventory_hostname == 'master1'
+
+
+=== ./ansible/roles/hardening/tasks/network_policies.yml ===
+
+- name: Apply default network policy
+  ansible.builtin.template:
+    src: default-network-policy.yaml.j2
+    dest: "{{ network_policy }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Apply network policy
+  when: inventory_hostname == 'master1'
+
+- name: Apply network policy
+  ansible.builtin.command:
+    cmd: "{{ kubectl_binary_dest }} apply -f {{ network_policy }}"
+  changed_when: true
+  when: inventory_hostname == 'master1'
+
+
+=== ./ansible/roles/hardening/tasks/etcd_backup.yml ===
+
+- name: Ensure etcd backup directory exists
+  ansible.builtin.file:
+    path: "{{ etcd_backup_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+  when: inventory_hostname in groups['etcd']
+
+- name: Create etcd backup script
+  ansible.builtin.copy:
+    content: |
+      #!/bin/bash
+      ETCDCTL_API=3 {{ etcdctl_binary }} snapshot save {{ etcd_backup_dir }}/etcd-snapshot-$(date +%Y%m%d%H%M%S).db \
+        --cacert={{ pki_dir }}/ca.pem \
+        --cert={{ etcd_pem }} \
+        --key={{ etcd_key_pem }} \
+        --endpoints=https://{{ ansible_host }}:2379
+    dest: "{{ etcd_backup_script }}"
+    owner: root
+    group: root
+    mode: "0755"
+  when: inventory_hostname in groups['etcd']
+
+- name: Schedule etcd backup cron job
+  ansible.builtin.cron:
+    name: etcd-backup
+    minute: "0"
+    hour: "2"
+    job: "{{ etcd_backup_script }}"
+  when: inventory_hostname in groups['etcd']
+
+
+=== ./ansible/roles/networking/defaults/main.yml ===
+
+# Networking paths
+coredns_manifest: "{{ config_dir }}/coredns-deployment.yaml"
+kubectl_binary_dest: /usr/local/bin/kubectl
+
+
+=== ./ansible/roles/networking/templates/coredns-deployment.yaml.j2 ===
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: kube-dns
+  namespace: kube-system
+  labels:
+    k8s-app: kube-dns
+spec:
+  ports:
+  - name: dns
+    port: 53
+    protocol: UDP
+  - name: dns-tcp
+    port: 53
+    protocol: TCP
+  selector:
+    k8s-app: kube-dns
+  clusterIP: "{{ service_cidr | ipaddr('10') }}"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: coredns
+  namespace: kube-system
+  labels:
+    k8s-app: kube-dns
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      k8s-app: kube-dns
+  template:
+    metadata:
+      labels:
+        k8s-app: kube-dns
+    spec:
+      containers:
+      - name: coredns
+        image: coredns/coredns:1.11.3
+        args:
+        - -conf
+        - /etc/coredns/Corefile
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/coredns
+      volumes:
+      - name: config-volume
+        configMap:
+          name: coredns
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coredns
+  namespace: kube-system
+data:
+  Corefile: |
+    .:53 {
+        errors
+        health
+        kubernetes cluster.local {{ pod_network_cidr | ipaddr('net') }}
+        forward . /etc/resolv.conf
+        cache 30
+        loop
+        reload
+    }
+
+=== ./ansible/roles/networking/meta/main.yml ===
+
+dependencies:
+  - {role: common, tags: ["common"]}
+  - {role: cni, tags: ["cni"]}
+
+
+=== ./ansible/roles/networking/handlers/apply_coredns.yml ===
+
+- name: Apply CoreDNS
+  ansible.builtin.command:
+    cmd: "{{ kubectl_binary_dest }} apply -f {{ coredns_manifest }}"
+  changed_when: true
+  when: inventory_hostname == 'master1'
+
+
+=== ./ansible/roles/networking/tasks/main.yml ===
+
+- name: Deploy CoreDNS
+  include_tasks: deploy_coredns.yml
+
+
+=== ./ansible/roles/networking/tasks/deploy_coredns.yml ===
+
+- name: Copy kubectl binary
+  ansible.builtin.copy:
+    src: "{{ kubectl_binary }}"
+    dest: "{{ kubectl_binary_dest }}"
+    mode: "0755"
+
+- name: Apply CoreDNS manifest
+  ansible.builtin.template:
+    src: coredns-deployment.yaml.j2
+    dest: "{{ coredns_manifest }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Apply CoreDNS
+  when: inventory_hostname == 'master1'
+
+- name: Apply CoreDNS configuration
+  ansible.builtin.command:
+    cmd: "{{ kubectl_binary_dest }} apply -f {{ coredns_manifest }}"
+  changed_when: true
+  when: inventory_hostname == 'master1'
+
+
+=== ./ansible/ansible.cfg ===
+
+[defaults]
+inventory = inventory/hosts.ini
+remote_user = ubuntu
+private_key_file = ~/.ssh/id_rsa
+host_key_checking = False
+retry_files_enabled = False
+stdout_callback = yaml
+
+[privilege_escalation]
+become = True
+become_method = sudo
+become_user = root
+become_ask_pass = False
+
+=== ./provision_jumpbox.sh ===
+
+#!/bin/bash
+
+set -e  # Exit on error
+
+# Function for formatted task output
+task_echo() {
+    echo "===> $1"
+}
+
+task_echo "[Task 1] - Install required packages"
+{
+    apt-get update
+    apt-get install -y ansible sshpass curl
+}
+
+task_echo "[Task 2] - Create download directories"
+{
+    mkdir -p /vagrant_data/ansible/roles/{certificates,etcd,control-plane,container-runtime,kubelet,kube-proxy,cni,networking}/files
+    cd /vagrant_data/ansible || exit
+}
+
+task_echo "[Task 3] - Download binaries"
+{
+    BINARIES=(
+        "https://github.com/cloudflare/cfssl/releases/download/v1.6.5/cfssl_1.6.5_linux_amd64|roles/certificates/files/cfssl"
+        "https://github.com/cloudflare/cfssl/releases/download/v1.6.5/cfssljson_1.6.5_linux_amd64|roles/certificates/files/cfssljson"
+        "https://github.com/etcd-io/etcd/releases/download/v3.6.0/etcd-v3.6.0-linux-amd64.tar.gz|roles/etcd/files/etcd.tar.gz"
+        "https://dl.k8s.io/v1.34.1/bin/linux/amd64/kube-apiserver|roles/control-plane/files/kube-apiserver"
+        "https://dl.k8s.io/v1.34.1/bin/linux/amd64/kube-controller-manager|roles/control-plane/files/kube-controller-manager"
+        "https://dl.k8s.io/v1.34.1/bin/linux/amd64/kube-scheduler|roles/control-plane/files/kube-scheduler"
+        "https://dl.k8s.io/v1.34.1/bin/linux/amd64/kubelet|roles/kubelet/files/kubelet"
+        "https://dl.k8s.io/v1.34.1/bin/linux/amd64/kube-proxy|roles/kube-proxy/files/kube-proxy"
+        "https://github.com/opencontainers/runc/releases/download/v1.2.0/runc.amd64|roles/container-runtime/files/runc"
+        "https://github.com/containerd/containerd/releases/download/v2.1.4/containerd-2.1.4-linux-amd64.tar.gz|roles/container-runtime/files/containerd.tar.gz"
+        "https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml|roles/cni/files/kube-flannel.yml"
+        "https://dl.k8s.io/v1.34.1/bin/linux/amd64/kubectl|roles/networking/files/kubectl"
+    )
+
+    for entry in "${BINARIES[@]}"; do
+        url=$(echo "$entry" | cut -d'|' -f1)
+        dest=$(echo "$entry" | cut -d'|' -f2)
+        filename=$(basename "$dest")
+
+        if [ ! -f "$dest" ]; then
+            echo "Downloading: $filename from $url"
+            curl -L -o "$dest" "$url" --progress-bar
+        else
+            echo "$filename already exists. Skipping download."
+        fi
+    done
+}
+
+task_echo "[Task 4] - Extract binaries from archives"
+{
+    # Extract etcd
+    if [ -f roles/etcd/files/etcd.tar.gz ]; then
+        tar -xzf roles/etcd/files/etcd.tar.gz -C roles/etcd/files
+        mv roles/etcd/files/etcd-v3.6.0-linux-amd64/{etcd,etcdctl} roles/etcd/files/
+        rm -rf roles/etcd/files/etcd-v3.6.0-linux-amd64 roles/etcd/files/etcd.tar.gz
+    fi
+
+    # Extract containerd
+    if [ -f roles/container-runtime/files/containerd.tar.gz ]; then
+        tar -xzf roles/container-runtime/files/containerd.tar.gz -C roles/container-runtime/files
+        mv roles/container-runtime/files/bin/containerd roles/container-runtime/files/
+        rm -rf roles/container-runtime/files/bin roles/container-runtime/files/containerd.tar.gz
+    fi
+}
+
+task_echo "[Task 5] - Make binaries executable"
+{
+    binaries=(
+        "roles/certificates/files/cfssl"
+        "roles/certificates/files/cfssljson"
+        "roles/etcd/files/etcd"
+        "roles/etcd/files/etcdctl"
+        "roles/control-plane/files/kube-apiserver"
+        "roles/control-plane/files/kube-controller-manager"
+        "roles/control-plane/files/kube-scheduler"
+        "roles/kubelet/files/kubelet"
+        "roles/kube-proxy/files/kube-proxy"
+        "roles/container-runtime/files/runc"
+        "roles/container-runtime/files/containerd"
+        "roles/networking/files/kubectl"
+    )
+
+    for entry in "${binaries[@]}"; do
+        if [ -f "$entry" ]; then
+            chmod +x "$entry"
+        fi
+    done
+}
+
+task_echo "[Task 6] - List downloaded binaries"
+{
+    find roles/*/files -type f -exec ls -l {} \;
+}
+
+task_echo "[Task 7] - Run Ansible playbooks"
+{
+    cd /vagrant_data/ansible
+    ansible-playbook -i inventory/hosts.ini playbooks/master.yml
+}
+
+echo "Jumpbox provisioning complete."
+
+=== ./.vscode/settings.json ===
+
+{
+  "jira-plugin.workingProject": ""
+}
+

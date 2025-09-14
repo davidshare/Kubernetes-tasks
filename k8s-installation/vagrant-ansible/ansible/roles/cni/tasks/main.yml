@@ -1,2 +1,16 @@
-- name: Configure Flannel CNI
-  include_tasks: configure_flannel.yml
+- name: Copy CNI manifest
+  ansible.builtin.copy:
+    src: "{{ cni_manifest_paths[cni_plugin] }}"
+    dest: "/etc/kubernetes/{{ cni_plugin }}.yml"
+    owner: root
+    group: root
+    mode: "0644"
+  when: inventory_hostname == 'master1'
+
+- name: Apply CNI manifest
+  ansible.builtin.command:
+    cmd: "{{ kubectl_binary_dest }} apply -f /etc/kubernetes/{{ cni_plugin }}.yml"
+    creates: /var/run/cni-applied
+  changed_when: true
+  when: inventory_hostname == 'master1'
+  notify: Apply CNI

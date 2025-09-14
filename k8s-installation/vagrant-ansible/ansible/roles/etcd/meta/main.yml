@@ -1,3 +1,4 @@
 dependencies:
   - {role: common, tags: ["common"]}
+  - {role: jumpbox_setup, tags: ["jumpbox_setup"]}
   - {role: certificates, tags: ["certificates"]}

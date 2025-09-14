@@ -1,0 +1,5 @@
+- name: Setup jumpbox with binaries
+  hosts: jumpbox
+  become: yes
+  roles:
+    - jumpbox_setup

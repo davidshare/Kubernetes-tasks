@@ -1,90 +1,69 @@
-# Define how much memory your computer has in GB
-RAM_SIZE = 16  # Your available usable RAM in GB
-CPU_CORES = 8  # Your available CPU cores
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
 
-# Internal network prefix for the VM network
-IP_NW = "192.168.56."
+require 'yaml'
 
-# Calculate resource amounts
-# Master and worker nodes have 2GB RAM max, per user preference
+# Load network configuration from network.yml
+network_config = YAML.load_file('ansible/inventory/group_vars/network.yml')
+
+# Define resources
 RESOURCES = {
-  "master" => {
-    "ram" => 2048,  # Fixed to 2GB
-    "cpu" => 2,     # 2 CPUs for master
-    "disk" => 51200 # 50GB for etcd data
-  },
-  "worker" => {
-    "ram" => 2048,  # Fixed to 2GB
-    "cpu" => 1,     # 1 CPU
-    "disk" => 30720 # 30GB for workers
-  },
-  "jumpbox" => {
-    "ram" => 1024,  # 1GB
-    "cpu" => 1,     # 1 CPU
-    "disk" => 20480 # 20GB
-  }
+  "master" => { "ram" => 2048, "cpu" => 2, "disk" => "50GB" },
+  "worker" => { "ram" => 2048, "cpu" => 1, "disk" => "30GB" },
 }
+JUMP_RAM = 1024
+JUMP_DISK = "20GB"
 
-# Define the number of master and worker nodes
-NUM_MASTER_NODES = 1  # Scaled to 1 master
-NUM_WORKER_NODES = 2  # 2 workers
-
-# Host address start points
-MASTER_IP_START = 11  # Start at .11 for master1
-WORKER_IP_START = 21  # Start at .21 for worker1
-JUMP_IP_START = 40
-
-# Vagrant configuration
 Vagrant.configure("2") do |config|
   config.vm.box = "ubuntu/jammy64"
-  config.vm.boot_timeout = 1200
-  config.vm.synced_folder "./ansible", "/vagrant_data/ansible"
-  config.vm.box_check_update = false
+  config.ssh.insert_key = false
 
-  # Common provisioning for all nodes
-  config.vm.provision "shell", path: "/vagrant_data/ansible/provision_common.sh"
-
-  # Provision Jumpbox Node
-  config.vm.define "jumpbox" do |node|
-    node.vm.provider "virtualbox" do |vb|
-      vb.name = "jumpbox"
-      vb.memory = RESOURCES["jumpbox"]["ram"]
-      vb.cpus = RESOURCES["jumpbox"]["cpu"]
-      vb.customize ['modifyhd', :id, '--resize', RESOURCES["jumpbox"]["disk"]]
+  # Jumpbox configuration
+  config.vm.define "jumpbox" do |jumpbox|
+    jumpbox.vm.network "private_network", ip: network_config['network']['jumpbox']['ip']
+    jumpbox.vm.network "forwarded_port", guest: 22, host: 2731, id: "ssh"
+    jumpbox.vm.hostname = network_config['network']['jumpbox']['name']
+    jumpbox.vm.provider "virtualbox" do |vb|
+      vb.memory = JUMP_RAM
+      vb.cpus = 1
+      vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+      vb.customize ['createhd', '--filename', './.vagrant/jumpbox-disk.vdi', '--size', 20 * 1024]
+      vb.customize ['storageattach', :id, '--storagectl', 'SATA Controller', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', './.vagrant/jumpbox-disk.vdi']
     end
-    node.vm.hostname = "jumpbox"
-    node.vm.network :private_network, ip: IP_NW + "#{JUMP_IP_START}"
-    node.vm.network "forwarded_port", guest: 22, host: 2731
-    node.vm.provision "shell", path: "/vagrant_data/ansible/provision_jumpbox.sh"
+    jumpbox.vm.provision "shell", path: "provision_jumpbox.sh"
   end
 
-  # Provision Master Node (single master)
-  (1..NUM_MASTER_NODES).each do |i|
-    config.vm.define "master#{i}" do |node|
-      node.vm.provider "virtualbox" do |vb|
-        vb.name = "master#{i}"
+  # Master nodes configuration
+  network_config['network']['masters'].each_with_index do |master, index|
+    config.vm.define master['name'] do |master_node|
+      master_node.vm.network "private_network", ip: master['ip']
+      master_node.vm.network "forwarded_port", guest: 22, host: 2711 + index, id: "ssh"
+      master_node.vm.hostname = master['name']
+      master_node.vm.provider "virtualbox" do |vb|
         vb.memory = RESOURCES["master"]["ram"]
         vb.cpus = RESOURCES["master"]["cpu"]
-        vb.customize ['modifyhd', :id, '--resize', RESOURCES["master"]["disk"]]
+        vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+        vb.customize ['createhd', '--filename', "./.vagrant/#{master['name']}-disk.vdi", '--size', 50 * 1024]
+        vb.customize ['storageattach', :id, '--storagectl', 'SATA Controller', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', "./.vagrant/#{master['name']}-disk.vdi"]
       end
-      node.vm.hostname = "master#{i}"
-      node.vm.network :private_network, ip: IP_NW + "#{MASTER_IP_START + i - 1}"
-      node.vm.network "forwarded_port", guest: 22, host: "#{2710 + i}"
+      master_node.vm.provision "shell", path: "provision_common.sh"
     end
   end
 
-  # Provision Worker Nodes
-  (1..NUM_WORKER_NODES).each do |i|
-    config.vm.define "worker#{i}" do |node|
-      node.vm.provider "virtualbox" do |vb|
-        vb.name = "worker#{i}"
+  # Worker nodes configuration
+  network_config['network']['workers'].each_with_index do |worker, index|
+    config.vm.define worker['name'] do |worker_node|
+      worker_node.vm.network "private_network", ip: worker['ip']
+      worker_node.vm.network "forwarded_port", guest: 22, host: 2721 + index, id: "ssh"
+      worker_node.vm.hostname = worker['name']
+      worker_node.vm.provider "virtualbox" do |vb|
         vb.memory = RESOURCES["worker"]["ram"]
         vb.cpus = RESOURCES["worker"]["cpu"]
-        vb.customize ['modifyhd', :id, '--resize', RESOURCES["worker"]["disk"]]
+        vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+        vb.customize ['createhd', '--filename', "./.vagrant/#{worker['name']}-disk.vdi", '--size', 30 * 1024]
+        vb.customize ['storageattach', :id, '--storagectl', 'SATA Controller', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', "./.vagrant/#{worker['name']}-disk.vdi"]
       end
-      node.vm.hostname = "worker#{i}"
-      node.vm.network :private_network, ip: IP_NW + "#{WORKER_IP_START + i - 1}"
-      node.vm.network "forwarded_port", guest: 22, host: "#{2720 + i}"
+      worker_node.vm.provision "shell", path: "provision_common.sh"
     end
   end
 end

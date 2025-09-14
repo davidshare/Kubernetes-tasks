@@ -7,3 +7,9 @@ network:
       name: worker1
     - ip: 192.168.56.22
       name: worker2
+  jumpbox:
+    ip: 192.168.56.40
+    name: jumpbox
+  pod_cidr: "{{ pod_network_cidr }}"
+  service_cidr: 10.96.0.0/12
+  dns_service_ip: "{{ service_cidr | ipaddr('10') }}"
