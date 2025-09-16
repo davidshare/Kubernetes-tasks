@@ -121,7 +121,7 @@ The full tree can be found here [Complete project folder structure](./ansible-tr
 
 4. **Manual Playbook Execution** (Optional):
 
-   - If you prefer to run playbooks individually (e.g., for debugging), navigate to `/vagrant_data/ansible` on the jumpbox and execute:
+   - If you prefer to run playbooks individually (e.g., for debugging), navigate to `/home/vagrant/k8s-project/ansible` on the jumpbox and execute:
      ```bash
      ansible-playbook -i inventory/hosts.ini playbooks/master.yml
      ```
@@ -259,4 +259,3 @@ Contributions are welcome! Please submit pull requests or open issues for improv
 ## License
 
 This project is licensed under the MIT License. See the `LICENSE` file for details.
-

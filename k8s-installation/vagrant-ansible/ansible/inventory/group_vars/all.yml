@@ -1,23 +1,35 @@
 # Global paths
 base_dir: /etc/kubernetes
-pki_dir: "{{ base_dir }}/pki"
+pki_dir: /var/lib/kubernetes
 manifests_dir: "{{ base_dir }}/manifests"
 config_dir: "{{ base_dir }}/configs"
 
+# Certificate destination directories
+certificate_dirs:
+  base_path: "/home/vagrant/k8s-project/ansible/roles/certificates-generate/files"
+  kubernetes: "{{ pki_dir }}" # For cluster-wide certs
+  etcd: /etc/etcd # For etcd-specific certs
+  kubelet: "{{ pki_dir }}" # For kubelet certs (in pki_dir)
+  kube_proxy: "{{ pki_dir }}" # For kube-proxy certs
+
+# etcd settings for single-node cluster
+etcd_data_dir: /var/lib/etcd
+etcd_cert_dir: "{{ certificate_dirs.etcd }}" # Reference the defined directory
+
 # Binary paths (source from synced ansible/roles/*/files/)
-cfssl_binary: /vagrant_data/ansible/roles/certificates/files/cfssl
-cfssljson_binary: /vagrant_data/ansible/roles/certificates/files/cfssljson
-etcd_binary: /vagrant_data/ansible/roles/etcd/files/etcd
-etcdctl_binary: /vagrant_data/ansible/roles/etcd/files/etcdctl
-kube_apiserver_binary: /vagrant_data/ansible/roles/control-plane/files/kube-apiserver
-kube_controller_manager_binary: /vagrant_data/ansible/roles/control-plane/files/kube-controller-manager
-kube_scheduler_binary: /vagrant_data/ansible/roles/control-plane/files/kube-scheduler
-kubelet_binary: /vagrant_data/ansible/roles/kubelet/files/kubelet
-kube_proxy_binary: /vagrant_data/ansible/roles/kube-proxy/files/kube-proxy
-runc_binary: /vagrant_data/ansible/roles/container-runtime/files/runc
-containerd_binary: /vagrant_data/ansible/roles/container-runtime/files/containerd
-kubectl_binary: /vagrant_data/ansible/roles/networking/files/kubectl
-flannel_manifest: /vagrant_data/ansible/roles/cni/files/kube-flannel.yml
+cfssl_binary: /home/vagrant/k8s-project/ansible/roles/certificates-generate/files/cfssl
+cfssljson_binary: /home/vagrant/k8s-project/ansible/roles/certificates-generate/files/cfssljson
+etcd_binary: /home/vagrant/k8s-project/ansible/roles/etcd/files/etcd
+etcdctl_binary: /home/vagrant/k8s-project/ansible/roles/etcd/files/etcdctl
+kube_apiserver_binary: /home/vagrant/k8s-project/ansible/roles/control-plane/files/kube-apiserver
+kube_controller_manager_binary: /home/vagrant/k8s-project/ansible/roles/control-plane/files/kube-controller-manager
+kube_scheduler_binary: /home/vagrant/k8s-project/ansible/roles/control-plane/files/kube-scheduler
+kubelet_binary: /home/vagrant/k8s-project/ansible/roles/kubelet/files/kubelet
+kube_proxy_binary: /home/vagrant/k8s-project/ansible/roles/kube-proxy/files/kube-proxy
+runc_binary: /home/vagrant/k8s-project/ansible/roles/container-runtime/files/runc
+containerd_binary: /home/vagrant/k8s-project/ansible/roles/container-runtime/files/containerd
+kubectl_binary: /home/vagrant/k8s-project/ansible/roles/networking/files/kubectl
+flannel_manifest: /home/vagrant/k8s-project/ansible/roles/cni/files/kube-flannel.yml
 
 # Kubernetes versions and settings
 kubernetes_version: 1.34.1
@@ -25,8 +37,11 @@ etcd_version: 3.6.0
 containerd_version: 2.0.0
 cfssl_version: 1.6.5
 
+# Kubernetes API server addresses
+kubernetes_public_address: 192.168.56.11 # master1 IP
+kubernetes_internal_address: 10.32.0.1 # Kubernetes internal IP (usually first IP of service CIDR)
+
 # Network settings
-pod_network_cidr: 10.244.0.0/16
 service_cidr: 10.96.0.0/12
 api_server_port: 6443
 api_server_endpoint: https://192.168.56.11:6443 # Updated to master1
@@ -36,31 +51,29 @@ cluster_name: kubernetes
 swap_enabled: false
 ntp_package: chrony
 
-
-ssh_public_key_path: /vagrant_data/.vagrant/machines/jumpbox/virtualbox/private_key.pub
+ssh_public_key_path: /home/vagrant/k8s-project/.vagrant/machines/jumpbox/virtualbox/private_key.pub
 common_firewall_ports:
   - 22/tcp
   - 6443/tcp
-  - 2379-2380/tcp
+  - 2379/tcp
+  - 2380/tcp
+
 cni_plugin: flannel
 cni_manifest_paths:
   flannel: "{{ role_path }}/files/flannel.yml"
   calico: "{{ role_path }}/files/calico.yaml"
-  cilium: "{{ role_path }}/files/cilium.yaml"
+
 cni_configs:
   flannel:
     pod_network_cidr: 10.244.0.0/16
   calico:
     pod_network_cidr: 192.168.0.0/16
-  cilium:
-    pod_network_cidr: 10.0.0.0/16
+
 pod_network_cidr: "{{ cni_configs[cni_plugin].pod_network_cidr }}"
+
 cni_extra_ports:
   flannel:
     - 8472/udp
   calico:
     - 179/tcp
     - 4789/udp
-  cilium:
-    - 8472/udp
-    - 4240/tcp  # Hubble for Cilium

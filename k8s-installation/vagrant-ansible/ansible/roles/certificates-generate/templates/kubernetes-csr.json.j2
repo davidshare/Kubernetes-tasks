@@ -1,0 +1,26 @@
+{
+  "CN": "kubernetes",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "US",
+      "L": "Portland",
+      "O": "Kubernetes",
+      "OU": "Kubernetes",
+      "ST": "Oregon"
+    }
+  ],
+  "hosts": [
+    "127.0.0.1",
+    "10.32.0.1",
+    {% if kubernetes_public_address is defined %}"{{ kubernetes_public_address }}",{% endif %}
+    {% if kubernetes_internal_address is defined %}"{{ kubernetes_internal_address }}",{% endif %}
+    "kubernetes",
+    "kubernetes.default",
+    "kubernetes.default.svc",
+    "kubernetes.default.svc.cluster.local"
+  ]
+}

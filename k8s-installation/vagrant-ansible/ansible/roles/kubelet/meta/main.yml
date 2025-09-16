@@ -2,4 +2,4 @@ dependencies:
   - {role: common, tags: ["common"]}
   - {role: jumpbox_setup, tags: ["jumpbox_setup"]}
   - {role: container-runtime, tags: ["container-runtime"]}
-  - {role: certificates, tags: ["certificates"]}
+  - {role: certificates-generate, tags: ["certificates"]}

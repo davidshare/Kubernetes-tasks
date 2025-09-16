@@ -1,0 +1,25 @@
+# Base directory variables
+pki_dir: /var/lib/kubernetes
+etcd_cert_dir: /etc/etcd
+
+# Certificate destination paths
+ca_pem: "{{ pki_dir }}/ca.pem"
+ca_key_pem: "{{ pki_dir }}/ca-key.pem"
+kubernetes_pem: "{{ pki_dir }}/kubernetes.pem"
+kubernetes_key_pem: "{{ pki_dir }}/kubernetes-key.pem"
+admin_pem: "{{ pki_dir }}/admin.pem"
+admin_key_pem: "{{ pki_dir }}/admin-key.pem"
+service_account_pem: "{{ pki_dir }}/service-account.pem"
+service_account_key_pem: "{{ pki_dir }}/service-account-key.pem"
+kube_controller_manager_pem: "{{ pki_dir }}/kube-controller-manager.pem"
+kube_controller_manager_key_pem: "{{ pki_dir }}/kube-controller-manager-key.pem"
+kube_scheduler_pem: "{{ pki_dir }}/kube-scheduler.pem"
+kube_scheduler_key_pem: "{{ pki_dir }}/kube-scheduler-key.pem"
+kubelet_pem: "{{ pki_dir }}/{{ kubelet_cert_file }}"
+kubelet_key_pem: "{{ pki_dir }}/{{ kubelet_key_file }}"
+etcd_pem: "{{ etcd_cert_dir }}/etcd.pem"
+etcd_key_pem: "{{ etcd_cert_dir }}/etcd-key.pem"
+
+# Kubelet certificate filenames
+kubelet_cert_file: "{{ inventory_hostname }}.pem"
+kubelet_key_file: "{{ inventory_hostname }}-key.pem"

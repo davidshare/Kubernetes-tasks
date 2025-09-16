@@ -7,6 +7,8 @@ Requires=containerd.service
 [Service]
 ExecStart={{ kubelet_binary_dest }} \
     --node-name={{ node_name }} \
+    --tls-cert-file={{ pki_dir }}/{{ kubelet_cert_file }} \
+    --tls-private-key-file={{ pki_dir }}/{{ kubelet_key_file }} \
     {% for arg in kubelet_args %} {{ arg }} {% endfor %}
 Restart=on-failure
 LimitNOFILE=65536

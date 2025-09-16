@@ -21,8 +21,20 @@ export -f process_file
 # Clear the output file if it exists
 > "$OUTPUT_FILE"
 
-# Find all files (excluding directories) and process them
-find . -type f -not -path "./$OUTPUT_FILE" -exec bash -c 'process_file "$0"' {} \; >> "$OUTPUT_FILE"
+# Build find command with exclusions
+find . \
+  -type d \( -name '.vscode' -o -name '.vagrant' -o -name '.qodo' -o -name 'files' \) -prune -o \
+  -type f \
+  ! -name "$OUTPUT_FILE" \
+  ! -name "ansible-tree.md" \
+  ! -iname "readme.md" \
+  -exec bash -c 'process_file "$0"' {} \; >> "$OUTPUT_FILE"
 
 echo "All files have been combined into: $OUTPUT_FILE"
-echo "Total files processed: $(find . -type f -not -path "./$OUTPUT_FILE" | wc -l)"
+echo "Total files processed: $(find . \
+  -type d \( -name '.vscode' -o -name '.vagrant' -o -name '.qodo' -o -name 'files' \) -prune -o \
+  -type f \
+  ! -name "$OUTPUT_FILE" \
+  ! -name "ansible-tree.md" \
+  ! -iname "readme.md" \
+  -print | wc -l)"

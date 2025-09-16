@@ -4,9 +4,10 @@ kube_apiserver_port: "{{ api_server_port }}"
 kube_apiserver_args:
   - --etcd-servers=https://192.168.56.11:2379
   - --client-ca-file={{ pki_dir }}/ca.crt
-  - --service-account-key-file={{ pki_dir }}/sa.pub
-  - --tls-cert-file={{ pki_dir }}/apiserver.crt
-  - --tls-private-key-file={{ pki_dir }}/apiserver.key
+  - --service-account-key-file={{ pki_dir }}/service-account.pem
+  - --service-account-private-key-file={{ pki_dir }}/service-account-key.pem
+  - --tls-cert-file={{ pki_dir }}/kubernetes.pem
+  - --tls-private-key-file={{ pki_dir }}/kubernetes-key.pem
   - --service-cluster-ip-range={{ service_cidr }}
   - --encryption-provider-config={{ config_dir }}/encryption-config.yaml
 

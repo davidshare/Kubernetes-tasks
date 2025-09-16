@@ -17,21 +17,10 @@ JUMP_DISK = "20GB"
 Vagrant.configure("2") do |config|
   config.vm.box = "ubuntu/jammy64"
   config.ssh.insert_key = false
-
-  # Jumpbox configuration
-  config.vm.define "jumpbox" do |jumpbox|
-    jumpbox.vm.network "private_network", ip: network_config['network']['jumpbox']['ip']
-    jumpbox.vm.network "forwarded_port", guest: 22, host: 2731, id: "ssh"
-    jumpbox.vm.hostname = network_config['network']['jumpbox']['name']
-    jumpbox.vm.provider "virtualbox" do |vb|
-      vb.memory = JUMP_RAM
-      vb.cpus = 1
-      vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
-      vb.customize ['createhd', '--filename', './.vagrant/jumpbox-disk.vdi', '--size', 20 * 1024]
-      vb.customize ['storageattach', :id, '--storagectl', 'SATA Controller', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', './.vagrant/jumpbox-disk.vdi']
-    end
-    jumpbox.vm.provision "shell", path: "provision_jumpbox.sh"
-  end
+  config.vm.synced_folder ".", "/home/vagrant/k8s-project"
+  
+  # Mount Vagrant's insecure keys into the jumpbox
+  config.vm.synced_folder "#{Dir.home}/.vagrant.d/insecure_private_keys", "/home/vagrant/vagrant-keys"
 
   # Master nodes configuration
   network_config['network']['masters'].each_with_index do |master, index|
@@ -42,9 +31,6 @@ Vagrant.configure("2") do |config|
       master_node.vm.provider "virtualbox" do |vb|
         vb.memory = RESOURCES["master"]["ram"]
         vb.cpus = RESOURCES["master"]["cpu"]
-        vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
-        vb.customize ['createhd', '--filename', "./.vagrant/#{master['name']}-disk.vdi", '--size', 50 * 1024]
-        vb.customize ['storageattach', :id, '--storagectl', 'SATA Controller', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', "./.vagrant/#{master['name']}-disk.vdi"]
       end
       master_node.vm.provision "shell", path: "provision_common.sh"
     end
@@ -59,11 +45,39 @@ Vagrant.configure("2") do |config|
       worker_node.vm.provider "virtualbox" do |vb|
         vb.memory = RESOURCES["worker"]["ram"]
         vb.cpus = RESOURCES["worker"]["cpu"]
-        vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
-        vb.customize ['createhd', '--filename', "./.vagrant/#{worker['name']}-disk.vdi", '--size', 30 * 1024]
-        vb.customize ['storageattach', :id, '--storagectl', 'SATA Controller', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', "./.vagrant/#{worker['name']}-disk.vdi"]
       end
       worker_node.vm.provision "shell", path: "provision_common.sh"
     end
   end
+
+  # Jumpbox configuration (provision LAST)
+  config.vm.define "jumpbox" do |jumpbox|
+    jumpbox.vm.network "private_network", ip: network_config['network']['jumpbox']['ip']
+    jumpbox.vm.network "forwarded_port", guest: 22, host: 2731, id: "ssh"
+    jumpbox.vm.hostname = network_config['network']['jumpbox']['name']
+    jumpbox.vm.provider "virtualbox" do |vb|
+      vb.memory = JUMP_RAM
+      vb.cpus = 1
+    end
+    
+    # Run common provisioning on jumpbox too
+    jumpbox.vm.provision "shell", path: "provision_common.sh"
+    
+    # Run jumpbox-specific provisioning
+    jumpbox.vm.provision "shell", path: "provision_jumpbox.sh"
+    
+    # Setup SSH keys for cluster access
+    jumpbox.vm.provision "shell", path: "scripts/distribute-ssh-keys.sh"
+  end
+
+  # Trigger for cluster provisioning (runs after jumpbox is fully provisioned)
+  config.trigger.after :up do |trigger|
+    trigger.name = "provision-cluster"
+    trigger.info = "Running Ansible to provision Kubernetes cluster"
+    trigger.run_remote = {
+      inline: "cd /home/vagrant/k8s-project/ansible && ansible-playbook -i inventory/hosts.ini playbooks/cluster.yml"
+    }
+    trigger.only_on = "jumpbox"
+  end
+
 end

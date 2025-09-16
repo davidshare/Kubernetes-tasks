@@ -1,5 +1,6 @@
 - name: Setup jumpbox with binaries
-  hosts: jumpbox
+  connection: local
+  hosts: jumpboxes
   become: yes
   roles:
     - jumpbox_setup

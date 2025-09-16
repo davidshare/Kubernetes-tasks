@@ -1,0 +1,6 @@
+- name: Generate CA certificate and key
+  ansible.builtin.shell: "{{ cfssl_binary }} gencert -initca {{ ca_csr }} | {{ cfssljson_binary }} -bare ca"
+  args:
+    chdir: "{{ role_path }}/files"
+    creates: "{{ role_path }}/files/ca.pem"
+  when: not ansible_check_mode

@@ -7,6 +7,8 @@ After=network.target
 ExecStart={{ apiserver_binary_dest }} \
     --bind-address={{ kube_apiserver_bind_address }} \
     --secure-port={{ kube_apiserver_port }} \
+    --tls-cert-file={{ pki_dir }}/{{ kubernetes_cert_file }} \
+    --tls-private-key-file={{ pki_dir }}/{{ kubernetes_key_file }} \
     {% for arg in kube_apiserver_args %} {{ arg }} {% endfor %}
 Restart=on-failure
 LimitNOFILE=65536

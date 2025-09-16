@@ -10,6 +10,6 @@ authorization:
 clusterDomain: cluster.local
 clusterDNS:
   - "{{ service_cidr | ipaddr('10') }}"
-tlsCertFile: "{{ kubelet_pem }}"
-tlsPrivateKeyFile: "{{ kubelet_key_pem }}"
+tlsCertFile: "{{ pki_dir }}/{{ kubelet_cert_file }}"
+tlsPrivateKeyFile: "{{ pki_dir }}/{{ kubelet_key_file }}"
 cgroupDriver: systemd

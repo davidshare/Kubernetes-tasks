@@ -1,6 +1,6 @@
 - name: Create directories for binaries
   ansible.builtin.file:
-    path: "/vagrant_data/ansible/roles/{{ item }}/files"
+    path: "/home/vagrant/k8s-project/ansible/roles/{{ item }}/files"
     state: directory
     owner: root
     group: root
@@ -19,7 +19,7 @@
 - name: Download binaries
   ansible.builtin.get_url:
     url: "{{ item.url }}"
-    dest: "/vagrant_data/ansible/roles/{{ item.dest_dir }}/files/{{ item.filename }}"
+    dest: "/home/vagrant/k8s-project/ansible/roles/{{ item.dest_dir }}/files/{{ item.filename }}"
     mode: "0644"
   loop:
     - {
@@ -87,25 +87,20 @@
         dest_dir: "cni",
         filename: "calico.yaml",
       }
-    - {
-        url: "https://raw.githubusercontent.com/cilium/cilium/v1.15.1/install/kubernetes/cilium.yaml",
-        dest_dir: "cni",
-        filename: "cilium.yaml",
-      }
   when: inventory_hostname == 'jumpbox'
 
 - name: Extract etcd archive
   ansible.builtin.unarchive:
-    src: "/vagrant_data/ansible/roles/etcd/files/etcd.tar.gz"
-    dest: "/vagrant_data/ansible/roles/etcd/files/"
+    src: "/home/vagrant/k8s-project/ansible/roles/etcd/files/etcd.tar.gz"
+    dest: "/home/vagrant/k8s-project/ansible/roles/etcd/files/"
     remote_src: yes
-    creates: "/vagrant_data/ansible/roles/etcd/files/etcd"
+    creates: "/home/vagrant/k8s-project/ansible/roles/etcd/files/etcd"
   when: inventory_hostname == 'jumpbox'
 
 - name: Move etcd binaries
   ansible.builtin.command:
-    cmd: mv /vagrant_data/ansible/roles/etcd/files/etcd-v3.6.0-linux-amd64/{{ item }} /vagrant_data/ansible/roles/etcd/files/
-    creates: "/vagrant_data/ansible/roles/etcd/files/{{ item }}"
+    cmd: mv /home/vagrant/k8s-project/ansible/roles/etcd/files/etcd-v3.6.0-linux-amd64/{{ item }} /home/vagrant/k8s-project/ansible/roles/etcd/files/
+    creates: "/home/vagrant/k8s-project/ansible/roles/etcd/files/{{ item }}"
   loop:
     - etcd
     - etcdctl
@@ -116,22 +111,22 @@
     path: "{{ item }}"
     state: absent
   loop:
-    - "/vagrant_data/ansible/roles/etcd/files/etcd.tar.gz"
-    - "/vagrant_data/ansible/roles/etcd/files/etcd-v3.6.0-linux-amd64"
+    - "/home/vagrant/k8s-project/ansible/roles/etcd/files/etcd.tar.gz"
+    - "/home/vagrant/k8s-project/ansible/roles/etcd/files/etcd-v3.6.0-linux-amd64"
   when: inventory_hostname == 'jumpbox'
 
 - name: Extract containerd archive
   ansible.builtin.unarchive:
-    src: "/vagrant_data/ansible/roles/container-runtime/files/containerd.tar.gz"
-    dest: "/vagrant_data/ansible/roles/container-runtime/files/"
+    src: "/home/vagrant/k8s-project/ansible/roles/container-runtime/files/containerd.tar.gz"
+    dest: "/home/vagrant/k8s-project/ansible/roles/container-runtime/files/"
     remote_src: yes
-    creates: "/vagrant_data/ansible/roles/container-runtime/files/containerd"
+    creates: "/home/vagrant/k8s-project/ansible/roles/container-runtime/files/containerd"
   when: inventory_hostname == 'jumpbox'
 
 - name: Move containerd binary
   ansible.builtin.command:
-    cmd: mv /vagrant_data/ansible/roles/container-runtime/files/bin/containerd /vagrant_data/ansible/roles/container-runtime/files/
-    creates: "/vagrant_data/ansible/roles/container-runtime/files/containerd"
+    cmd: mv /home/vagrant/k8s-project/ansible/roles/container-runtime/files/bin/containerd /home/vagrant/k8s-project/ansible/roles/container-runtime/files/
+    creates: "/home/vagrant/k8s-project/ansible/roles/container-runtime/files/containerd"
   when: inventory_hostname == 'jumpbox'
 
 - name: Remove containerd archive and directory
@@ -139,17 +134,17 @@
     path: "{{ item }}"
     state: absent
   loop:
-    - "/vagrant_data/ansible/roles/container-runtime/files/containerd.tar.gz"
-    - "/vagrant_data/ansible/roles/container-runtime/files/bin"
+    - "/home/vagrant/k8s-project/ansible/roles/container-runtime/files/containerd.tar.gz"
+    - "/home/vagrant/k8s-project/ansible/roles/container-runtime/files/bin"
   when: inventory_hostname == 'jumpbox'
 
 - name: Make binaries executable
   ansible.builtin.file:
-    path: "/vagrant_data/ansible/roles/{{ item.dest_dir }}/files/{{ item.filename }}"
+    path: "/home/vagrant/k8s-project/ansible/roles/{{ item.dest_dir }}/files/{{ item.filename }}"
     mode: "0755"
   loop:
-    - {dest_dir: "certificates", filename: "cfssl"}
-    - {dest_dir: "certificates", filename: "cfssljson"}
+    - {dest_dir: "certificates-generate", filename: "cfssl"}
+    - {dest_dir: "certificates-generate", filename: "cfssljson"}
     - {dest_dir: "etcd", filename: "etcd"}
     - {dest_dir: "etcd", filename: "etcdctl"}
     - {dest_dir: "control-plane", filename: "kube-apiserver"}

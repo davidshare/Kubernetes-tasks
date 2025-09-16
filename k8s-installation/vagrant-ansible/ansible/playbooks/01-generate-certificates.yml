@@ -1,0 +1,6 @@
+- name: Generate certificates on jumpbox
+  hosts: jumpboxes
+  become: yes
+  roles:
+    - certificates-generate
+  tags: generate-certs

@@ -1,0 +1,26 @@
+- name: Create CSR files
+  include_tasks: create_csr_files.yml
+
+- name: Generate CA certificate
+  include_tasks: generate_ca.yml
+
+- name: Generate kubernetes certificate
+  include_tasks: generate_kubernetes_certs.yml
+
+- name: Generate admin client certificate
+  include_tasks: generate_admin_cert.yml
+
+- name: Generate controller certificates
+  include_tasks: generate_controller_certs.yml
+
+- name: Generate etcd certificates
+  include_tasks: generate_etcd_certs.yml
+
+- name: Generate worker certificates
+  include_tasks: generate_worker_certs.yml
+
+- name: Generate kube-proxy certificates
+  include_tasks: generate_kube_proxy_certs.yml
+
+- name: Generate service account key pair
+  include_tasks: generate_service_account_key.yml

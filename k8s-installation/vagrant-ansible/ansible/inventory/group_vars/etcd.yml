@@ -1,14 +1,14 @@
-# etcd settings for single-node cluster
-etcd_data_dir: /var/lib/etcd
+
+
 etcd_args:
   - --name={{ inventory_hostname }}
   - --data-dir={{ etcd_data_dir }}
   - --client-cert-auth=true
-  - --cert-file={{ pki_dir }}/etcd.pem
-  - --key-file={{ pki_dir }}/etcd-key.pem
+  - --cert-file={{ etcd_cert_dir }}/etcd.pem
+  - --key-file={{ etcd_cert_dir }}/etcd-key.pem
   - --trusted-ca-file={{ pki_dir }}/ca.pem
-  - --peer-cert-file={{ pki_dir }}/etcd.pem
-  - --peer-key-file={{ pki_dir }}/etcd-key.pem
+  - --peer-cert-file={{ etcd_cert_dir }}/etcd.pem
+  - --peer-key-file={{ etcd_cert_dir }}/etcd-key.pem
   - --peer-trusted-ca-file={{ pki_dir }}/ca.pem
   - --initial-cluster=master1=https://192.168.56.11:2380
   - --initial-cluster-state=new

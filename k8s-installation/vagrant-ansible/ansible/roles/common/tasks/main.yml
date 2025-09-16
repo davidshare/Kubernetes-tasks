@@ -3,6 +3,3 @@
 
 - name: Configure firewall
   include_tasks: configure_firewall.yml
-
-- name: Configure SSH keys
-  include_tasks: ssh_keys.yml

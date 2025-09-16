@@ -1,0 +1,35 @@
+- name: Setup prerequisites
+  import_playbook: 00-prerequisites.yml
+
+- name: Generate certificates
+  import_playbook: 01-generate-certificates.yml
+
+- name: Distribute certificates
+  import_playbook: 02-distribute-certificates.yml
+
+- name: Setup etcd cluster
+  import_playbook: 03-etcd-cluster.yml
+
+- name: Setup control plane
+  import_playbook: 04-control-plane.yml
+
+- name: Setup container runtime
+  import_playbook: 05-container-runtime.yml
+
+- name: Setup CNI
+  import_playbook: 06-cni.yml
+
+- name: Setup kubelet
+  import_playbook: 07-kubelet.yml
+
+- name: Setup kube-proxy
+  import_playbook: 08-kube-proxy.yml
+
+- name: Bootstrap cluster
+  import_playbook: 09-bootstrap.yml
+
+- name: Setup networking
+  import_playbook: 10-networking.yml
+
+- name: Harden cluster
+  import_playbook: 11-hardening.yml
