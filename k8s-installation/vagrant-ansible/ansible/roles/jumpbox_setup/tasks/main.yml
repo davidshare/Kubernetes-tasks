@@ -46,12 +46,12 @@
         filename: "kube-proxy",
       }
     - {
-        url: "https://github.com/opencontainers/runc/releases/download/v1.2.0/runc.amd64",
+        url: "https://github.com/opencontainers/runc/releases/download/v1.3.1/runc.amd64",
         dest_dir: "container-runtime",
         filename: "runc",
       }
     - {
-        url: "https://github.com/containerd/containerd/releases/download/v2.0.0/containerd-2.0.0-linux-amd64.tar.gz",
+        url: "https://github.com/containerd/containerd/releases/download/v2.1.4/containerd-2.1.4-linux-amd64.tar.gz",
         dest_dir: "container-runtime",
         filename: "containerd.tar.gz",
         mode: "0644",
@@ -73,4 +73,50 @@
         filename: "calico.yaml",
         mode: "0644",
       }
+  when: inventory_hostname == 'jumpbox'
+
+- name: Extract containerd archive
+  ansible.builtin.unarchive:
+    src: "/home/vagrant/k8s-project/ansible/roles/container-runtime/files/containerd.tar.gz"
+    dest: "/home/vagrant/k8s-project/ansible/roles/container-runtime/files/"
+    remote_src: yes
+    owner: root
+    group: root
+  when: inventory_hostname == 'jumpbox'
+
+- name: Extract etcd archive
+  ansible.builtin.unarchive:
+    src: "/home/vagrant/k8s-project/ansible/roles/etcd/files/etcd.tar.gz"
+    dest: "/home/vagrant/k8s-project/ansible/roles/etcd/files/"
+    remote_src: yes
+    owner: root
+    group: root
+  when: inventory_hostname == 'jumpbox'
+
+- name: Move containerd binaries to correct location
+  ansible.builtin.shell: |
+    cd /home/vagrant/k8s-project/ansible/roles/container-runtime/files/
+    mv containerd-2.0.0-linux-amd64/bin/* .
+    rm -rf containerd-2.0.0-linux-amd64
+  when: inventory_hostname == 'jumpbox'
+
+- name: Move etcd binaries to correct location
+  ansible.builtin.shell: |
+    cd /home/vagrant/k8s-project/ansible/roles/etcd/files/
+    mv etcd-v3.6.0-linux-amd64/* .
+    rm -rf etcd-v3.6.0-linux-amd64
+  when: inventory_hostname == 'jumpbox'
+
+- name: Set executable permissions on extracted binaries
+  ansible.builtin.file:
+    path: "{{ item }}"
+    mode: "0755"
+  loop:
+    - /home/vagrant/k8s-project/ansible/roles/container-runtime/files/containerd
+    - /home/vagrant/k8s-project/ansible/roles/container-runtime/files/containerd-shim
+    - /home/vagrant/k8s-project/ansible/roles/container-runtime/files/containerd-shim-runc-v1
+    - /home/vagrant/k8s-project/ansible/roles/container-runtime/files/containerd-shim-runc-v2
+    - /home/vagrant/k8s-project/ansible/roles/container-runtime/files/ctr
+    - /home/vagrant/k8s-project/ansible/roles/etcd/files/etcd
+    - /home/vagrant/k8s-project/ansible/roles/etcd/files/etcdctl
   when: inventory_hostname == 'jumpbox'

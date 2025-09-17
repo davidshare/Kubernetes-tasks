@@ -6,5 +6,5 @@ apiserver_service: /etc/systemd/system/kube-apiserver.service
 controller_manager_service: /etc/systemd/system/kube-controller-manager.service
 scheduler_service: /etc/systemd/system/kube-scheduler.service
 encryption_config: "{{ config_dir }}/encryption-config.yaml"
-kubernetes_cert_file: apiserver.crt
-kubernetes_key_file: apiserver.key
+kubernetes_cert_file: apiserver.pem
+kubernetes_key_file: apiserver-key.pem

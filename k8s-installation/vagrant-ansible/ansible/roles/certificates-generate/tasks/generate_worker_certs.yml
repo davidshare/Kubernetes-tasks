@@ -1,6 +1,6 @@
 - name: Generate kubelet certificate and key
-  ansible.builtin.shell: "{{ cfssl_binary }} gencert -ca={{ role_path }}/files/ca.crt -ca-key={{ role_path }}/files/ca.key -config={{ ca_config }} -profile={{ ca_profile }} {{ kubelet_csr }} | {{ cfssljson_binary }} -bare kubelet"
+  ansible.builtin.shell: "{{ cfssl_binary }} gencert -ca={{ role_path }}/files/ca.pem -ca-key={{ role_path }}/files/ca-key.pem -config={{ ca_config }} -profile={{ ca_profile }} {{ kubelet_csr }} | {{ cfssljson_binary }} -bare kubelet"
   args:
     chdir: "{{ role_path }}/files"
-    creates: "{{ role_path }}/files/kubelet.crt"
+    creates: "{{ role_path }}/files/kubelet.pem"
   when: not ansible_check_mode

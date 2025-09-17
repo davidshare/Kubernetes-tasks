@@ -1,3 +1,7 @@
+=== ./.gitignore ===
+
+files/
+
 === ./provision_common.sh ===
 
 #!/bin/bash
@@ -163,10 +167,10 @@ echo "Total files processed: $(find . \
 === ./ansible/inventory/group_vars/workers.yml ===
 
 # Kubelet settings
-kubelet_cert_file: "{{ inventory_hostname }}.crt"
-kubelet_key_file: "{{ inventory_hostname }}.key"
-kube_proxy_cert_file: kube-proxy.crt
-kube_proxy_key_file: kube-proxy.key
+kubelet_cert_file: "{{ inventory_hostname }}.pem"
+kubelet_key_file: "{{ inventory_hostname }}-key.pem"
+kube_proxy_cert_file: kube-proxy.pem
+kube_proxy_key_file: kube-proxy-key.pem
 
 kubelet_args:
   - --config={{ config_dir }}/kubelet-config.yaml
@@ -269,19 +273,19 @@ kube_apiserver_bind_address: 0.0.0.0
 kube_apiserver_port: "{{ api_server_port }}"
 kube_apiserver_args:
   - --etcd-servers=https://192.168.56.11:2379
-  - --client-ca-file={{ pki_dir }}/ca.crt
+  - --client-ca-file={{ pki_dir }}/ca.pem
   - --service-account-key-file={{ pki_dir }}/sa.pub
-  - --service-account-signing-key-file={{ pki_dir }}/sa.key
-  - --tls-cert-file={{ pki_dir }}/apiserver.crt
-  - --tls-private-key-file={{ pki_dir }}/apiserver.key
+  - --service-account-signing-key-file={{ pki_dir }}/sa-key.pem
+  - --tls-cert-file={{ pki_dir }}/apiserver.pem
+  - --tls-private-key-file={{ pki_dir }}/apiserver-key.pem
   - --service-cluster-ip-range={{ service_cidr }}
   - --encryption-provider-config={{ config_dir }}/encryption-config.yaml
 
 kube_controller_manager_args:
-  - --cluster-signing-cert-file={{ pki_dir }}/ca.crt
-  - --cluster-signing-key-file={{ pki_dir }}/ca.key
-  - --service-account-private-key-file={{ pki_dir }}/sa.key
-  - --root-ca-file={{ pki_dir }}/ca.crt
+  - --cluster-signing-cert-file={{ pki_dir }}/ca.pem
+  - --cluster-signing-key-file={{ pki_dir }}/ca-key.pem
+  - --service-account-private-key-file={{ pki_dir }}/sa-key.pem
+  - --root-ca-file={{ pki_dir }}/ca.pem
 
 kube_scheduler_args:
   - --authentication-kubeconfig={{ config_dir }}/kube-scheduler.kubeconfig
@@ -313,12 +317,12 @@ etcd_args:
   - --name={{ inventory_hostname }}
   - --data-dir={{ etcd_data_dir }}
   - --client-cert-auth=true
-  - --cert-file={{ etcd_cert_dir }}/etcd-server.crt
-  - --key-file={{ etcd_cert_dir }}/etcd-server.key
-  - --trusted-ca-file={{ pki_dir }}/ca.crt
-  - --peer-cert-file={{ etcd_cert_dir }}/etcd-server.crt
-  - --peer-key-file={{ etcd_cert_dir }}/etcd-server.key
-  - --peer-trusted-ca-file={{ pki_dir }}/ca.crt
+  - --cert-file={{ etcd_cert_dir }}/etcd-server.pem
+  - --key-file={{ etcd_cert_dir }}/etcd-server-key.pem
+  - --trusted-ca-file={{ pki_dir }}/ca.pem
+  - --peer-cert-file={{ etcd_cert_dir }}/etcd-server.pem
+  - --peer-key-file={{ etcd_cert_dir }}/etcd-server-key.pem
+  - --peer-trusted-ca-file={{ pki_dir }}/ca.pem
   - --initial-cluster=master1=https://192.168.56.11:2380
   - --initial-cluster-state=new
   - --listen-client-urls=https://0.0.0.0:2379
@@ -971,8 +975,8 @@ apiserver_service: /etc/systemd/system/kube-apiserver.service
 controller_manager_service: /etc/systemd/system/kube-controller-manager.service
 scheduler_service: /etc/systemd/system/kube-scheduler.service
 encryption_config: "{{ config_dir }}/encryption-config.yaml"
-kubernetes_cert_file: apiserver.crt
-kubernetes_key_file: apiserver.key
+kubernetes_cert_file: apiserver.pem
+kubernetes_key_file: apiserver-key.pem
 
 
 === ./ansible/roles/control-plane/templates/kube-apiserver.service.j2 ===
@@ -1211,22 +1215,22 @@ etcd_csr: "{{ role_path }}/files/etcd-csr.json"
 service_account_csr: "{{ role_path }}/files/service-account-csr.json"
 
 # Certificate output paths
-ca_pem: "{{ role_path }}/files/ca.crt" 
-ca_key_pem: "{{ role_path }}/files/ca.key"
-kubernetes_pem: "{{ role_path }}/files/apiserver.crt"
-kubernetes_key_pem: "{{ role_path }}/files/apiserver.key"
-admin_pem: "{{ role_path }}/files/admin.crt"
-admin_key_pem: "{{ role_path }}/files/admin.key"
-kube_controller_manager_pem: "{{ role_path }}/files/kube-controller-manager.crt"
-kube_controller_manager_key_pem: "{{ role_path }}/files/kube-controller-manager.key"
-kube_scheduler_pem: "{{ role_path }}/files/kube-scheduler.crt"
-kube_scheduler_key_pem: "{{ role_path }}/files/kube-scheduler.key"
-kubelet_pem: "{{ role_path }}/files/kubelet.crt"
-kubelet_key_pem: "{{ role_path }}/files/kubelet.key"
-etcd_pem: "{{ role_path }}/files/etcd-server.crt"
-etcd_key_pem: "{{ role_path }}/files/etcd-server.key"
+ca_pem: "{{ role_path }}/files/ca.pem"
+ca_key_pem: "{{ role_path }}/files/ca-key.pem"
+kubernetes_pem: "{{ role_path }}/files/apiserver.pem"
+kubernetes_key_pem: "{{ role_path }}/files/apiserver-key.pem"
+admin_pem: "{{ role_path }}/files/admin.pem"
+admin_key_pem: "{{ role_path }}/files/admin-key.pem"
+kube_controller_manager_pem: "{{ role_path }}/files/kube-controller-manager.pem"
+kube_controller_manager_key_pem: "{{ role_path }}/files/kube-controller-manager-key.pem"
+kube_scheduler_pem: "{{ role_path }}/files/kube-scheduler.pem"
+kube_scheduler_key_pem: "{{ role_path }}/files/kube-scheduler-key.pem"
+kubelet_pem: "{{ role_path }}/files/kubelet.pem"
+kubelet_key_pem: "{{ role_path }}/files/kubelet-key.pem"
+etcd_pem: "{{ role_path }}/files/etcd-server.pem"
+etcd_key_pem: "{{ role_path }}/files/etcd-server-key.pem"
 service_account_pem: "{{ role_path }}/files/sa.pub"
-service_account_key_pem: "{{ role_path }}/files/sa.key"
+service_account_key_pem: "{{ role_path }}/files/sa-key.pem"
 
 # CFSSL settings
 cfssl_binary: "{{ cfssl_binary }}"
@@ -1449,20 +1453,20 @@ dependencies: []
 === ./ansible/roles/certificates-generate/tasks/generate_kube_proxy_certs.yml ===
 
 - name: Generate kube-proxy certificate and key
-  ansible.builtin.shell: "{{ cfssl_binary }} gencert -ca={{ role_path }}/files/ca.crt -ca-key={{ role_path }}/files/ca.key -config={{ ca_config }} -profile={{ ca_profile }} {{ role_path }}/files/kube-proxy-csr.json | {{ cfssljson_binary }} -bare kube-proxy"
+  ansible.builtin.shell: "{{ cfssl_binary }} gencert -ca={{ role_path }}/files/ca.pem -ca-key={{ role_path }}/files/ca-key.pem -config={{ ca_config }} -profile={{ ca_profile }} {{ role_path }}/files/kube-proxy-csr.json | {{ cfssljson_binary }} -bare kube-proxy"
   args:
     chdir: "{{ role_path }}/files"
-    creates: "{{ role_path }}/files/kube-proxy.crt"
+    creates: "{{ role_path }}/files/kube-proxy.pem"
   when: not ansible_check_mode
 
 
 === ./ansible/roles/certificates-generate/tasks/generate_worker_certs.yml ===
 
 - name: Generate kubelet certificate and key
-  ansible.builtin.shell: "{{ cfssl_binary }} gencert -ca={{ role_path }}/files/ca.crt -ca-key={{ role_path }}/files/ca.key -config={{ ca_config }} -profile={{ ca_profile }} {{ kubelet_csr }} | {{ cfssljson_binary }} -bare kubelet"
+  ansible.builtin.shell: "{{ cfssl_binary }} gencert -ca={{ role_path }}/files/ca.pem -ca-key={{ role_path }}/files/ca-key.pem -config={{ ca_config }} -profile={{ ca_profile }} {{ kubelet_csr }} | {{ cfssljson_binary }} -bare kubelet"
   args:
     chdir: "{{ role_path }}/files"
-    creates: "{{ role_path }}/files/kubelet.crt"
+    creates: "{{ role_path }}/files/kubelet.pem"
   when: not ansible_check_mode
 
 
@@ -1532,27 +1536,27 @@ dependencies: []
 === ./ansible/roles/certificates-generate/tasks/generate_etcd_certs.yml ===
 
 - name: Generate etcd certificate and key
-  ansible.builtin.shell: "{{ cfssl_binary }} gencert -ca={{ role_path }}/files/ca.crt -ca-key={{ role_path }}/files/ca.key -config={{ ca_config }} -profile={{ ca_profile }} {{ etcd_csr }} | {{ cfssljson_binary }} -bare etcd-server"
+  ansible.builtin.shell: "{{ cfssl_binary }} gencert -ca={{ role_path }}/files/ca.pem -ca-key={{ role_path }}/files/ca-key.pem -config={{ ca_config }} -profile={{ ca_profile }} {{ etcd_csr }} | {{ cfssljson_binary }} -bare etcd-server"
   args:
     chdir: "{{ role_path }}/files"
-    creates: "{{ role_path }}/files/etcd-server.crt"
+    creates: "{{ role_path }}/files/etcd-server.pem"
   when: not ansible_check_mode
 
 
 === ./ansible/roles/certificates-generate/tasks/generate_controller_certs.yml ===
 
 - name: Generate kube-controller-manager certificate and key
-  ansible.builtin.shell: "{{ cfssl_binary }} gencert -ca={{ role_path }}/files/ca.crt -ca-key={{ role_path }}/files/ca.key -config={{ ca_config }} -profile={{ ca_profile }} {{ kube_controller_manager_csr }} | {{ cfssljson_binary }} -bare kube-controller-manager"
+  ansible.builtin.shell: "{{ cfssl_binary }} gencert -ca={{ role_path }}/files/ca.pem -ca-key={{ role_path }}/files/ca-key.pem -config={{ ca_config }} -profile={{ ca_profile }} {{ kube_controller_manager_csr }} | {{ cfssljson_binary }} -bare kube-controller-manager"
   args:
     chdir: "{{ role_path }}/files"
-    creates: "{{ role_path }}/files/kube-controller-manager.crt"
+    creates: "{{ role_path }}/files/kube-controller-manager.pem"
   when: not ansible_check_mode
 
 - name: Generate kube-scheduler certificate and key
-  ansible.builtin.shell: "{{ cfssl_binary }} gencert -ca={{ role_path }}/files/ca.crt -ca-key={{ role_path }}/files/ca.key -config={{ ca_config }} -profile={{ ca_profile }} {{ kube_scheduler_csr }} | {{ cfssljson_binary }} -bare kube-scheduler"
+  ansible.builtin.shell: "{{ cfssl_binary }} gencert -ca={{ role_path }}/files/ca.pem -ca-key={{ role_path }}/files/ca-key.pem -config={{ ca_config }} -profile={{ ca_profile }} {{ kube_scheduler_csr }} | {{ cfssljson_binary }} -bare kube-scheduler"
   args:
     chdir: "{{ role_path }}/files"
-    creates: "{{ role_path }}/files/kube-scheduler.crt"
+    creates: "{{ role_path }}/files/kube-scheduler.pem"
   when: not ansible_check_mode
 
 
@@ -1563,33 +1567,41 @@ dependencies: []
 
 - name: Generate CA certificate
   include_tasks: generate_ca.yml
+  register: ca_generation_result
 
 - name: Generate kubernetes certificate
   include_tasks: generate_kubernetes_certs.yml
+  when: ca_generation_result is succeeded
 
 - name: Generate admin client certificate
   include_tasks: generate_admin_cert.yml
+  when: ca_generation_result is succeeded
 
 - name: Generate controller certificates
   include_tasks: generate_controller_certs.yml
+  when: ca_generation_result is succeeded
 
 - name: Generate etcd certificates
   include_tasks: generate_etcd_certs.yml
+  when: ca_generation_result is succeeded
 
 - name: Generate worker certificates
   include_tasks: generate_worker_certs.yml
+  when: ca_generation_result is succeeded
 
 - name: Generate kube-proxy certificates
   include_tasks: generate_kube_proxy_certs.yml
+  when: ca_generation_result is succeeded
 
 - name: Generate service account key pair
   include_tasks: generate_service_account_key.yml
+  when: ca_generation_result is succeeded
 
 
 === ./ansible/roles/certificates-generate/tasks/generate_service_account_key.yml ===
 
 - name: Generate service account key pair
-  ansible.builtin.shell: "{{ cfssl_binary }} gencert -ca={{ role_path }}/files/ca.crt -ca-key={{ role_path }}/files/ca.key -config={{ ca_config }} -profile={{ ca_profile }} {{ service_account_csr }} | {{ cfssljson_binary }} -bare sa"
+  ansible.builtin.shell: "{{ cfssl_binary }} gencert -ca={{ role_path }}/files/ca.pem -ca-key={{ role_path }}/files/ca-key.pem -config={{ ca_config }} -profile={{ ca_profile }} {{ service_account_csr }} | {{ cfssljson_binary }} -bare sa"
   args:
     chdir: "{{ role_path }}/files"
     creates: "{{ role_path }}/files/sa.pub"
@@ -1599,20 +1611,20 @@ dependencies: []
 === ./ansible/roles/certificates-generate/tasks/generate_admin_cert.yml ===
 
 - name: Generate admin certificate and key
-  ansible.builtin.shell: "{{ cfssl_binary }} gencert -ca={{ role_path }}/files/ca.crt -ca-key={{ role_path }}/files/ca.key -config={{ ca_config }} -profile={{ ca_profile }} {{ admin_csr }} | {{ cfssljson_binary }} -bare admin"
+  ansible.builtin.shell: "{{ cfssl_binary }} gencert -ca={{ role_path }}/files/ca.pem -ca-key={{ role_path }}/files/ca-key.pem -config={{ ca_config }} -profile={{ ca_profile }} {{ admin_csr }} | {{ cfssljson_binary }} -bare admin"
   args:
     chdir: "{{ role_path }}/files"
-    creates: "{{ role_path }}/files/admin.crt"
+    creates: "{{ role_path }}/files/admin.pem"
   when: not ansible_check_mode
 
 
 === ./ansible/roles/certificates-generate/tasks/generate_kubernetes_certs.yml ===
 
 - name: Generate kubernetes certificate and key
-  ansible.builtin.shell: "{{ cfssl_binary }} gencert -ca={{ role_path }}/files/ca.crt -ca-key={{ role_path }}/files/ca.key -config={{ ca_config }} -profile={{ ca_profile }} {{ kubernetes_csr }} | {{ cfssljson_binary }} -bare apiserver"
+  ansible.builtin.shell: "{{ cfssl_binary }} gencert -ca={{ role_path }}/files/ca.pem -ca-key={{ role_path }}/files/ca-key.pem -config={{ ca_config }} -profile={{ ca_profile }} {{ kubernetes_csr }} | {{ cfssljson_binary }} -bare apiserver"
   args:
     chdir: "{{ role_path }}/files"
-    creates: "{{ role_path }}/files/apiserver.crt"
+    creates: "{{ role_path }}/files/apiserver.pem"
   when: not ansible_check_mode
 
 
@@ -1622,14 +1634,30 @@ dependencies: []
   ansible.builtin.shell: "{{ cfssl_binary }} gencert -initca {{ ca_csr }} | {{ cfssljson_binary }} -bare ca"
   args:
     chdir: "{{ role_path }}/files"
-    creates: "{{ role_path }}/files/ca.crt"
+    creates: "{{ role_path }}/files/ca.pem"
   when: not ansible_check_mode
+  register: ca_generation_result
+  failed_when: ca_generation_result.rc != 0
+
+- name: Verify CA certificate was created
+  ansible.builtin.stat:
+    path: "{{ role_path }}/files/ca.pem"
+  register: ca_cert_stat
+  when: not ansible_check_mode
+  failed_when: not ca_cert_stat.stat.exists
+
+- name: Verify CA key was created
+  ansible.builtin.stat:
+    path: "{{ role_path }}/files/ca-key.pem"
+  register: ca_key_stat
+  when: not ansible_check_mode
+  failed_when: not ca_key_stat.stat.exists
 
 
 === ./ansible/roles/certificates-generate/tasks/generate_serviceaccount_key.yml ===
 
 - name: Generate service account certificate and key
-  ansible.builtin.shell: "{{ cfssl_binary }} gencert -ca={{ role_path }}/files/ca.crt -ca-key={{ role_path }}/files/ca.key -config={{ ca_config }} -profile={{ ca_profile }} {{ service_account_csr }} | {{ cfssljson_binary }} -bare service-account"
+  ansible.builtin.shell: "{{ cfssl_binary }} gencert -ca={{ role_path }}/files/ca.pem -ca-key={{ role_path }}/files/ca-key.pem -config={{ ca_config }} -profile={{ ca_profile }} {{ service_account_csr }} | {{ cfssljson_binary }} -bare service-account"
   args:
     chdir: "{{ role_path }}/files"
     creates: "{{ role_path }}/files/sa.pub"
@@ -1774,7 +1802,7 @@ apiVersion: v1
 kind: Config
 clusters:
 - cluster:
-    certificate-authority: {{ pki_dir }}/ca.crt
+    certificate-authority: {{ pki_dir }}/ca.pem
     server: https://192.168.56.11:6443
   name: kubernetes
 contexts:
@@ -1786,8 +1814,8 @@ current-context: kube-proxy@kubernetes
 users:
 - name: kube-proxy
   user:
-    client-certificate: {{ pki_dir }}/kube-proxy.crt
-    client-key: {{ pki_dir }}/kube-proxy.key
+    client-certificate: {{ pki_dir }}/kube-proxy.pem
+    client-key: {{ pki_dir }}/kube-proxy-key.pem
 
 === ./ansible/roles/bootstrap/templates/admin.kubeconfig.j2 ===
 
@@ -1795,7 +1823,7 @@ apiVersion: v1
 kind: Config
 clusters:
 - cluster:
-    certificate-authority: {{ pki_dir }}/ca.crt
+    certificate-authority: {{ pki_dir }}/ca.pem
     server: https://192.168.56.11:6443
   name: kubernetes
 contexts:
@@ -1807,8 +1835,8 @@ current-context: kubernetes-admin@kubernetes
 users:
 - name: kubernetes-admin
   user:
-    client-certificate: {{ pki_dir }}/admin.crt
-    client-key: {{ pki_dir }}/admin.key
+    client-certificate: {{ pki_dir }}/admin.pem
+    client-key: {{ pki_dir }}/admin-key.pem
 
 === ./ansible/roles/bootstrap/templates/kubelet.kubeconfig.j2 ===
 
@@ -1816,7 +1844,7 @@ apiVersion: v1
 kind: Config
 clusters:
 - cluster:
-    certificate-authority: {{ pki_dir }}/ca.crt
+    certificate-authority: {{ pki_dir }}/ca.pem
     server: https://192.168.56.11:6443
   name: kubernetes
 contexts:
@@ -1828,8 +1856,8 @@ current-context: kubelet@kubernetes
 users:
 - name: kubelet
   user:
-    client-certificate: {{ pki_dir }}/kubelet.crt
-    client-key: {{ pki_dir }}/kubelet.key
+    client-certificate: {{ pki_dir }}/kubelet.pem
+    client-key: {{ pki_dir }}/kubelet-key.pem
 
 === ./ansible/roles/bootstrap/templates/bootstrap.kubeconfig.j2 ===
 
@@ -1837,7 +1865,7 @@ apiVersion: v1
 kind: Config
 clusters:
 - cluster:
-    certificate-authority: {{ pki_dir }}/ca.crt
+    certificate-authority: {{ pki_dir }}/ca.pem
     server: https://192.168.56.11:6443
   name: kubernetes
 contexts:
@@ -2096,7 +2124,7 @@ dependencies: []
     content: |
       #!/bin/bash
       ETCDCTL_API=3 {{ etcdctl_binary }} snapshot save {{ etcd_backup_dir }}/etcd-snapshot-$(date +%Y%m%d%H%M%S).db \
-        --cacert={{ pki_dir }}/ca.crt \
+        --cacert={{ pki_dir }}/ca.pem \
         --cert={{ etcd_pem }} \
         --key={{ etcd_key_pem }} \
         --endpoints=https://{{ ansible_host }}:2379
@@ -2122,26 +2150,26 @@ pki_dir: /var/lib/kubernetes
 etcd_cert_dir: /etc/etcd
 
 # Certificate destination paths
-ca_pem: "{{ pki_dir }}/ca.crt"
-ca_key_pem: "{{ pki_dir }}/ca.key"
-kubernetes_pem: "{{ pki_dir }}/apiserver.crt"
-kubernetes_key_pem: "{{ pki_dir }}/apiserver.key"
-admin_pem: "{{ pki_dir }}/admin.crt"
-admin_key_pem: "{{ pki_dir }}/admin.key"
+ca_pem: "{{ pki_dir }}/ca.pem"
+ca_key_pem: "{{ pki_dir }}/ca-key.pem"
+kubernetes_pem: "{{ pki_dir }}/apiserver.pem"
+kubernetes_key_pem: "{{ pki_dir }}/apiserver-key.pem"
+admin_pem: "{{ pki_dir }}/admin.pem"
+admin_key_pem: "{{ pki_dir }}/admin-key.pem"
 service_account_pem: "{{ pki_dir }}/sa.pub"
-service_account_key_pem: "{{ pki_dir }}/sa.key"
-kube_controller_manager_pem: "{{ pki_dir }}/kube-controller-manager.crt"
-kube_controller_manager_key_pem: "{{ pki_dir }}/kube-controller-manager.key"
-kube_scheduler_pem: "{{ pki_dir }}/kube-scheduler.crt"
-kube_scheduler_key_pem: "{{ pki_dir }}/kube-scheduler.key"
-kubelet_pem: "{{ pki_dir }}/kubelet.crt"
-kubelet_key_pem: "{{ pki_dir }}/kubelet.key"
-etcd_pem: "{{ etcd_cert_dir }}/server.crt"
-etcd_key_pem: "{{ etcd_cert_dir }}/server.key"
+service_account_key_pem: "{{ pki_dir }}/sa-key.pem"
+kube_controller_manager_pem: "{{ pki_dir }}/kube-controller-manager.pem"
+kube_controller_manager_key_pem: "{{ pki_dir }}/kube-controller-manager-key.pem"
+kube_scheduler_pem: "{{ pki_dir }}/kube-scheduler.pem"
+kube_scheduler_key_pem: "{{ pki_dir }}/kube-scheduler-key.pem"
+kubelet_pem: "{{ pki_dir }}/kubelet.pem"
+kubelet_key_pem: "{{ pki_dir }}/kubelet-key.pem"
+etcd_pem: "{{ etcd_cert_dir }}/server.pem"
+etcd_key_pem: "{{ etcd_cert_dir }}/server-key.pem"
 
 # Kubelet certificate filenames
-kubelet_cert_file: "{{ inventory_hostname }}.crt"
-kubelet_key_file: "{{ inventory_hostname }}.key"
+kubelet_cert_file: "{{ inventory_hostname }}.pem"
+kubelet_key_file: "{{ inventory_hostname }}-key.pem"
 
 
 === ./ansible/roles/certificates-distribute/meta/main.yml ===
@@ -2181,32 +2209,32 @@ dependencies: []
     group: root
   loop:
     - {
-        src: "{{ certificate_dirs.base_path }}/ca.crt",
+        src: "{{ certificate_dirs.base_path }}/ca.pem",
         dest: "{{ ca_pem }}",
         mode: "0644",
       }
     - {
-        src: "{{ certificate_dirs.base_path }}/ca.key",
+        src: "{{ certificate_dirs.base_path }}/ca-key.pem",
         dest: "{{ ca_key_pem }}",
         mode: "0600",
       }
     - {
-        src: "{{ certificate_dirs.base_path }}/apiserver.crt",
+        src: "{{ certificate_dirs.base_path }}/apiserver.pem",
         dest: "{{ kubernetes_pem }}",
         mode: "0644",
       }
     - {
-        src: "{{ certificate_dirs.base_path }}/apiserver.key",
+        src: "{{ certificate_dirs.base_path }}/apiserver-key.pem",
         dest: "{{ kubernetes_key_pem }}",
         mode: "0600",
       }
     - {
-        src: "{{ certificate_dirs.base_path }}/admin.crt",
+        src: "{{ certificate_dirs.base_path }}/admin.pem",
         dest: "{{ admin_pem }}",
         mode: "0644",
       }
     - {
-        src: "{{ certificate_dirs.base_path }}/admin.key",
+        src: "{{ certificate_dirs.base_path }}/admin-key.pem",
         dest: "{{ admin_key_pem }}",
         mode: "0600",
       }
@@ -2216,7 +2244,7 @@ dependencies: []
         mode: "0644",
       }
     - {
-        src: "{{ certificate_dirs.base_path }}/sa.key",
+        src: "{{ certificate_dirs.base_path }}/sa-key.pem",
         dest: "{{ service_account_key_pem }}",
         mode: "0600",
       }
@@ -2230,22 +2258,22 @@ dependencies: []
     group: root
   loop:
     - {
-        src: "{{ certificate_dirs.base_path }}/kube-controller-manager.crt",
+        src: "{{ certificate_dirs.base_path }}/kube-controller-manager.pem",
         dest: "{{ kube_controller_manager_pem }}",
         mode: "0644",
       }
     - {
-        src: "{{ certificate_dirs.base_path }}/kube-controller-manager.key",
+        src: "{{ certificate_dirs.base_path }}/kube-controller-manager-key.pem",
         dest: "{{ kube_controller_manager_key_pem }}",
         mode: "0600",
       }
     - {
-        src: "{{ certificate_dirs.base_path }}/kube-scheduler.crt",
+        src: "{{ certificate_dirs.base_path }}/kube-scheduler.pem",
         dest: "{{ kube_scheduler_pem }}",
         mode: "0644",
       }
     - {
-        src: "{{ certificate_dirs.base_path }}/kube-scheduler.key",
+        src: "{{ certificate_dirs.base_path }}/kube-scheduler-key.pem",
         dest: "{{ kube_scheduler_key_pem }}",
         mode: "0600",
       }
@@ -2253,7 +2281,7 @@ dependencies: []
 
 - name: Copy kubelet certificates to worker and master nodes
   ansible.builtin.copy:
-    src: "{{ certificate_dirs.base_path }}/kubelet.crt"
+    src: "{{ certificate_dirs.base_path }}/kubelet.pem"
     dest: "{{ kubelet_pem }}"
     mode: "0644"
     owner: root
@@ -2262,7 +2290,7 @@ dependencies: []
 
 - name: Copy kubelet keys to worker and master nodes
   ansible.builtin.copy:
-    src: "{{ certificate_dirs.base_path }}/kubelet.key"
+    src: "{{ certificate_dirs.base_path }}/kubelet-key.pem"
     dest: "{{ kubelet_key_pem }}"
     mode: "0600"
     owner: root
@@ -2271,8 +2299,8 @@ dependencies: []
 
 - name: Copy kube-proxy certificates to worker nodes
   ansible.builtin.copy:
-    src: "{{ certificate_dirs.base_path }}/kube-proxy.crt"
-    dest: "{{ pki_dir }}/kube-proxy.crt"
+    src: "{{ certificate_dirs.base_path }}/kube-proxy.pem"
+    dest: "{{ pki_dir }}/kube-proxy.pem"
     mode: "0644"
     owner: root
     group: root
@@ -2280,8 +2308,8 @@ dependencies: []
 
 - name: Copy kube-proxy keys to worker nodes
   ansible.builtin.copy:
-    src: "{{ certificate_dirs.base_path }}/kube-proxy.key"
-    dest: "{{ pki_dir }}/kube-proxy.key"
+    src: "{{ certificate_dirs.base_path }}/kube-proxy-key.pem"
+    dest: "{{ pki_dir }}/kube-proxy-key.pem"
     mode: "0600"
     owner: root
     group: root
@@ -2296,12 +2324,12 @@ dependencies: []
     group: root
   loop:
     - {
-        src: "{{ certificate_dirs.base_path }}/etcd-server.crt",
+        src: "{{ certificate_dirs.base_path }}/etcd-server.pem",
         dest: "{{ etcd_pem }}",
         mode: "0644",
       }
     - {
-        src: "{{ certificate_dirs.base_path }}/etcd-server.key",
+        src: "{{ certificate_dirs.base_path }}/etcd-server-key.pem",
         dest: "{{ etcd_key_pem }}",
         mode: "0600",
       }
