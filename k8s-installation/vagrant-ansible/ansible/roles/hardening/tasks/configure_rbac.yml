@@ -10,6 +10,6 @@
 
 - name: Apply RBAC policy
   ansible.builtin.command:
-    cmd: "{{ kubectl_binary_dest }} apply -f {{ rbac_config }}"
+    cmd: "{{ kubectl_binary}} apply -f {{ rbac_config }}"
   changed_when: true
   when: inventory_hostname == 'master1'

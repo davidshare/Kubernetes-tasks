@@ -60,13 +60,9 @@ Vagrant.configure("2") do |config|
       vb.cpus = 1
     end
     
-    # Run common provisioning on jumpbox too
+    # Run provisioning on jumpbox too
     jumpbox.vm.provision "shell", path: "provision_common.sh"
-    
-    # Run jumpbox-specific provisioning
     jumpbox.vm.provision "shell", path: "provision_jumpbox.sh"
-    
-    # Setup SSH keys for cluster access
     jumpbox.vm.provision "shell", path: "scripts/distribute-ssh-keys.sh"
   end
 

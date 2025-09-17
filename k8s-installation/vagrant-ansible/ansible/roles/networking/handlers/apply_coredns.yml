@@ -1,5 +1,0 @@
-- name: Apply CoreDNS
-  ansible.builtin.command:
-    cmd: "{{ kubectl_binary_dest }} apply -f {{ coredns_manifest }}"
-  changed_when: true
-  when: inventory_hostname == 'master1'

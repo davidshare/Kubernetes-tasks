@@ -1,4 +1,0 @@
-- name: Restart kube-controller-manager
-  ansible.builtin.systemd:
-    name: kube-controller-manager
-    state: restarted

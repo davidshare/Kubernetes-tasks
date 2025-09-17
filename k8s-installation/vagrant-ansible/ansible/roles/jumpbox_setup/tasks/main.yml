@@ -1,41 +1,24 @@
-- name: Create directories for binaries
-  ansible.builtin.file:
-    path: "/home/vagrant/k8s-project/ansible/roles/{{ item }}/files"
-    state: directory
-    owner: root
-    group: root
-    mode: "0755"
-  loop:
-    - certificates
-    - etcd
-    - control-plane
-    - container-runtime
-    - kubelet
-    - kube-proxy
-    - cni
-    - networking
-  when: inventory_hostname == 'jumpbox'
-
-- name: Download binaries
+- name: Download binaries with correct executable permissions
   ansible.builtin.get_url:
     url: "{{ item.url }}"
     dest: "/home/vagrant/k8s-project/ansible/roles/{{ item.dest_dir }}/files/{{ item.filename }}"
-    mode: "0644"
+    mode: "0755"
   loop:
     - {
         url: "https://github.com/cloudflare/cfssl/releases/download/v1.6.5/cfssl_1.6.5_linux_amd64",
-        dest_dir: "certificates",
+        dest_dir: "certificates-generate",
         filename: "cfssl",
       }
     - {
         url: "https://github.com/cloudflare/cfssl/releases/download/v1.6.5/cfssljson_1.6.5_linux_amd64",
-        dest_dir: "certificates",
+        dest_dir: "certificates-generate",
         filename: "cfssljson",
       }
     - {
         url: "https://github.com/etcd-io/etcd/releases/download/v3.6.0/etcd-v3.6.0-linux-amd64.tar.gz",
         dest_dir: "etcd",
         filename: "etcd.tar.gz",
+        mode: "0644",
       }
     - {
         url: "https://dl.k8s.io/v1.34.1/bin/linux/amd64/kube-apiserver",
@@ -71,6 +54,7 @@
         url: "https://github.com/containerd/containerd/releases/download/v2.0.0/containerd-2.0.0-linux-amd64.tar.gz",
         dest_dir: "container-runtime",
         filename: "containerd.tar.gz",
+        mode: "0644",
       }
     - {
         url: "https://dl.k8s.io/v1.34.1/bin/linux/amd64/kubectl",
@@ -81,78 +65,12 @@
         url: "https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml",
         dest_dir: "cni",
         filename: "flannel.yml",
+        mode: "0644",
       }
     - {
         url: "https://docs.projectcalico.org/manifests/calico.yaml",
         dest_dir: "cni",
         filename: "calico.yaml",
+        mode: "0644",
       }
-  when: inventory_hostname == 'jumpbox'
-
-- name: Extract etcd archive
-  ansible.builtin.unarchive:
-    src: "/home/vagrant/k8s-project/ansible/roles/etcd/files/etcd.tar.gz"
-    dest: "/home/vagrant/k8s-project/ansible/roles/etcd/files/"
-    remote_src: yes
-    creates: "/home/vagrant/k8s-project/ansible/roles/etcd/files/etcd"
-  when: inventory_hostname == 'jumpbox'
-
-- name: Move etcd binaries
-  ansible.builtin.command:
-    cmd: mv /home/vagrant/k8s-project/ansible/roles/etcd/files/etcd-v3.6.0-linux-amd64/{{ item }} /home/vagrant/k8s-project/ansible/roles/etcd/files/
-    creates: "/home/vagrant/k8s-project/ansible/roles/etcd/files/{{ item }}"
-  loop:
-    - etcd
-    - etcdctl
-  when: inventory_hostname == 'jumpbox'
-
-- name: Remove etcd archive and directory
-  ansible.builtin.file:
-    path: "{{ item }}"
-    state: absent
-  loop:
-    - "/home/vagrant/k8s-project/ansible/roles/etcd/files/etcd.tar.gz"
-    - "/home/vagrant/k8s-project/ansible/roles/etcd/files/etcd-v3.6.0-linux-amd64"
-  when: inventory_hostname == 'jumpbox'
-
-- name: Extract containerd archive
-  ansible.builtin.unarchive:
-    src: "/home/vagrant/k8s-project/ansible/roles/container-runtime/files/containerd.tar.gz"
-    dest: "/home/vagrant/k8s-project/ansible/roles/container-runtime/files/"
-    remote_src: yes
-    creates: "/home/vagrant/k8s-project/ansible/roles/container-runtime/files/containerd"
-  when: inventory_hostname == 'jumpbox'
-
-- name: Move containerd binary
-  ansible.builtin.command:
-    cmd: mv /home/vagrant/k8s-project/ansible/roles/container-runtime/files/bin/containerd /home/vagrant/k8s-project/ansible/roles/container-runtime/files/
-    creates: "/home/vagrant/k8s-project/ansible/roles/container-runtime/files/containerd"
-  when: inventory_hostname == 'jumpbox'
-
-- name: Remove containerd archive and directory
-  ansible.builtin.file:
-    path: "{{ item }}"
-    state: absent
-  loop:
-    - "/home/vagrant/k8s-project/ansible/roles/container-runtime/files/containerd.tar.gz"
-    - "/home/vagrant/k8s-project/ansible/roles/container-runtime/files/bin"
-  when: inventory_hostname == 'jumpbox'
-
-- name: Make binaries executable
-  ansible.builtin.file:
-    path: "/home/vagrant/k8s-project/ansible/roles/{{ item.dest_dir }}/files/{{ item.filename }}"
-    mode: "0755"
-  loop:
-    - {dest_dir: "certificates-generate", filename: "cfssl"}
-    - {dest_dir: "certificates-generate", filename: "cfssljson"}
-    - {dest_dir: "etcd", filename: "etcd"}
-    - {dest_dir: "etcd", filename: "etcdctl"}
-    - {dest_dir: "control-plane", filename: "kube-apiserver"}
-    - {dest_dir: "control-plane", filename: "kube-controller-manager"}
-    - {dest_dir: "control-plane", filename: "kube-scheduler"}
-    - {dest_dir: "kubelet", filename: "kubelet"}
-    - {dest_dir: "kube-proxy", filename: "kube-proxy"}
-    - {dest_dir: "container-runtime", filename: "runc"}
-    - {dest_dir: "container-runtime", filename: "containerd"}
-    - {dest_dir: "networking", filename: "kubectl"}
   when: inventory_hostname == 'jumpbox'

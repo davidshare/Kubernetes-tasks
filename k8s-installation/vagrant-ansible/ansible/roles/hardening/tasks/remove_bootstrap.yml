@@ -1,5 +1,5 @@
 - name: Remove bootstrap token secret
   ansible.builtin.command:
-    cmd: "{{ kubectl_binary_dest }} -n kube-system delete secret bootstrap-token-{{ bootstrap_token_id }}"
+    cmd: "{{ kubectl_binary}} -n kube-system delete secret bootstrap-token-{{ bootstrap_token_id }}"
   changed_when: true
   when: inventory_hostname == 'master1'

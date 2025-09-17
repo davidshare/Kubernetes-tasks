@@ -3,24 +3,32 @@
 
 - name: Generate CA certificate
   include_tasks: generate_ca.yml
+  register: ca_generation_result
 
 - name: Generate kubernetes certificate
   include_tasks: generate_kubernetes_certs.yml
+  when: ca_generation_result is succeeded
 
 - name: Generate admin client certificate
   include_tasks: generate_admin_cert.yml
+  when: ca_generation_result is succeeded
 
 - name: Generate controller certificates
   include_tasks: generate_controller_certs.yml
+  when: ca_generation_result is succeeded
 
 - name: Generate etcd certificates
   include_tasks: generate_etcd_certs.yml
+  when: ca_generation_result is succeeded
 
 - name: Generate worker certificates
   include_tasks: generate_worker_certs.yml
+  when: ca_generation_result is succeeded
 
 - name: Generate kube-proxy certificates
   include_tasks: generate_kube_proxy_certs.yml
+  when: ca_generation_result is succeeded
 
 - name: Generate service account key pair
   include_tasks: generate_service_account_key.yml
+  when: ca_generation_result is succeeded

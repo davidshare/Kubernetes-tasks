@@ -1,3 +1,1 @@
-dependencies:
-  - {role: common, tags: ["common"]}
-  - {role: cni, tags: ["cni"]}
+dependencies: []

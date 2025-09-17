@@ -12,7 +12,7 @@
     content: |
       #!/bin/bash
       ETCDCTL_API=3 {{ etcdctl_binary }} snapshot save {{ etcd_backup_dir }}/etcd-snapshot-$(date +%Y%m%d%H%M%S).db \
-        --cacert={{ pki_dir }}/ca.pem \
+        --cacert={{ pki_dir }}/ca.crt \
         --cert={{ etcd_pem }} \
         --key={{ etcd_key_pem }} \
         --endpoints=https://{{ ansible_host }}:2379

@@ -9,7 +9,7 @@
 
 - name: Apply CNI manifest
   ansible.builtin.command:
-    cmd: "{{ kubectl_binary_dest }} apply -f /etc/kubernetes/{{ cni_plugin }}.yml"
+    cmd: "{{ kubectl_binary}} apply -f /etc/kubernetes/{{ cni_plugin }}.yml"
     creates: /var/run/cni-applied
   changed_when: true
   when: inventory_hostname == 'master1'

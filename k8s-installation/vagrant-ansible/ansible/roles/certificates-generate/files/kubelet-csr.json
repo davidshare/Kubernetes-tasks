@@ -1,5 +1,5 @@
 {
-  "CN": "system:node:master1",
+  "CN": "system:node:kubelet",
   "key": {
     "algo": "rsa",
     "size": 2048

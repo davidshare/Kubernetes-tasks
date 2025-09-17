@@ -1,6 +1,6 @@
 - name: Generate admin certificate and key
-  ansible.builtin.shell: "{{ cfssl_binary }} gencert -ca={{ role_path }}/files/ca.pem -ca-key={{ role_path }}/files/ca-key.pem -config={{ ca_config }} -profile={{ ca_profile }} {{ admin_csr }} | {{ cfssljson_binary }} -bare admin"
+  ansible.builtin.shell: "{{ cfssl_binary }} gencert -ca={{ role_path }}/files/ca.crt -ca-key={{ role_path }}/files/ca.key -config={{ ca_config }} -profile={{ ca_profile }} {{ admin_csr }} | {{ cfssljson_binary }} -bare admin"
   args:
     chdir: "{{ role_path }}/files"
-    creates: "{{ role_path }}/files/admin.pem"
+    creates: "{{ role_path }}/files/admin.crt"
   when: not ansible_check_mode

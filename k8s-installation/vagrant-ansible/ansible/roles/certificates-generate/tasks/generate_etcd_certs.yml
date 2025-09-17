@@ -1,6 +1,6 @@
 - name: Generate etcd certificate and key
-  ansible.builtin.shell: "{{ cfssl_binary }} gencert -ca={{ role_path }}/files/ca.pem -ca-key={{ role_path }}/files/ca-key.pem -config={{ ca_config }} -profile={{ ca_profile }} {{ etcd_csr }} | {{ cfssljson_binary }} -bare etcd"
+  ansible.builtin.shell: "{{ cfssl_binary }} gencert -ca={{ role_path }}/files/ca.crt -ca-key={{ role_path }}/files/ca.key -config={{ ca_config }} -profile={{ ca_profile }} {{ etcd_csr }} | {{ cfssljson_binary }} -bare etcd-server"
   args:
     chdir: "{{ role_path }}/files"
-    creates: "{{ role_path }}/files/etcd.pem"
+    creates: "{{ role_path }}/files/etcd-server.crt"
   when: not ansible_check_mode

@@ -1,7 +1,7 @@
 - name: Copy kubectl binary
   ansible.builtin.copy:
     src: "{{ kubectl_binary }}"
-    dest: "{{ kubectl_binary_dest }}"
+    dest: "{{ kubectl_binary}}"
     mode: "0755"
 
 - name: Apply CoreDNS manifest
@@ -11,11 +11,11 @@
     owner: root
     group: root
     mode: "0644"
-  notify: Apply CoreDNS
+  notify: apply_coredns
   when: inventory_hostname == 'master1'
 
 - name: Apply CoreDNS configuration
   ansible.builtin.command:
-    cmd: "{{ kubectl_binary_dest }} apply -f {{ coredns_manifest }}"
+    cmd: "{{ kubectl_binary}} apply -f {{ coredns_manifest }}"
   changed_when: true
   when: inventory_hostname == 'master1'

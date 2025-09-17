@@ -1,5 +1,0 @@
-- name: Apply CNI
-  ansible.builtin.command:
-    cmd: "{{ kubectl_binary_dest }} apply -f /etc/kubernetes/{{ cni_plugin }}.yml"
-  changed_when: true
-  when: inventory_hostname == 'master1'

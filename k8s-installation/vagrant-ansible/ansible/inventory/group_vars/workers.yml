@@ -1,8 +1,8 @@
 # Kubelet settings
-kubelet_cert_file: "{{ inventory_hostname }}.pem"
-kubelet_key_file: "{{ inventory_hostname }}-key.pem"
-kube_proxy_cert_file: kube-proxy.pem
-kube_proxy_key_file: kube-proxy-key.pem
+kubelet_cert_file: "{{ inventory_hostname }}.crt"
+kubelet_key_file: "{{ inventory_hostname }}.key"
+kube_proxy_cert_file: kube-proxy.crt
+kube_proxy_key_file: kube-proxy.key
 
 kubelet_args:
   - --config={{ config_dir }}/kubelet-config.yaml

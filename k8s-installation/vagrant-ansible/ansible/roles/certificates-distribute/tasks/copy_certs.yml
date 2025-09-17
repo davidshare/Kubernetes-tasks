@@ -23,42 +23,42 @@
     group: root
   loop:
     - {
-        src: "{{ certificate_dirs.base_path }}/ca.pem",
+        src: "{{ certificate_dirs.base_path }}/ca.crt",
         dest: "{{ ca_pem }}",
         mode: "0644",
       }
     - {
-        src: "{{ certificate_dirs.base_path }}/ca-key.pem",
+        src: "{{ certificate_dirs.base_path }}/ca.key",
         dest: "{{ ca_key_pem }}",
         mode: "0600",
       }
     - {
-        src: "{{ certificate_dirs.base_path }}/kubernetes.pem",
+        src: "{{ certificate_dirs.base_path }}/apiserver.crt",
         dest: "{{ kubernetes_pem }}",
         mode: "0644",
       }
     - {
-        src: "{{ certificate_dirs.base_path }}/kubernetes-key.pem",
+        src: "{{ certificate_dirs.base_path }}/apiserver.key",
         dest: "{{ kubernetes_key_pem }}",
         mode: "0600",
       }
     - {
-        src: "{{ certificate_dirs.base_path }}/admin.pem",
+        src: "{{ certificate_dirs.base_path }}/admin.crt",
         dest: "{{ admin_pem }}",
         mode: "0644",
       }
     - {
-        src: "{{ certificate_dirs.base_path }}/admin-key.pem",
+        src: "{{ certificate_dirs.base_path }}/admin.key",
         dest: "{{ admin_key_pem }}",
         mode: "0600",
       }
     - {
-        src: "{{ certificate_dirs.base_path }}/service-account.pem",
+        src: "{{ certificate_dirs.base_path }}/sa.pub",
         dest: "{{ service_account_pem }}",
         mode: "0644",
       }
     - {
-        src: "{{ certificate_dirs.base_path }}/service-account-key.pem",
+        src: "{{ certificate_dirs.base_path }}/sa.key",
         dest: "{{ service_account_key_pem }}",
         mode: "0600",
       }
@@ -72,22 +72,22 @@
     group: root
   loop:
     - {
-        src: "{{ certificate_dirs.base_path }}/kube-controller-manager.pem",
+        src: "{{ certificate_dirs.base_path }}/kube-controller-manager.crt",
         dest: "{{ kube_controller_manager_pem }}",
         mode: "0644",
       }
     - {
-        src: "{{ certificate_dirs.base_path }}/kube-controller-manager-key.pem",
+        src: "{{ certificate_dirs.base_path }}/kube-controller-manager.key",
         dest: "{{ kube_controller_manager_key_pem }}",
         mode: "0600",
       }
     - {
-        src: "{{ certificate_dirs.base_path }}/kube-scheduler.pem",
+        src: "{{ certificate_dirs.base_path }}/kube-scheduler.crt",
         dest: "{{ kube_scheduler_pem }}",
         mode: "0644",
       }
     - {
-        src: "{{ certificate_dirs.base_path }}/kube-scheduler-key.pem",
+        src: "{{ certificate_dirs.base_path }}/kube-scheduler.key",
         dest: "{{ kube_scheduler_key_pem }}",
         mode: "0600",
       }
@@ -95,7 +95,7 @@
 
 - name: Copy kubelet certificates to worker and master nodes
   ansible.builtin.copy:
-    src: "{{ certificate_dirs.base_path }}/kubelet.pem"
+    src: "{{ certificate_dirs.base_path }}/kubelet.crt"
     dest: "{{ kubelet_pem }}"
     mode: "0644"
     owner: root
@@ -104,7 +104,7 @@
 
 - name: Copy kubelet keys to worker and master nodes
   ansible.builtin.copy:
-    src: "{{ certificate_dirs.base_path }}/kubelet-key.pem"
+    src: "{{ certificate_dirs.base_path }}/kubelet.key"
     dest: "{{ kubelet_key_pem }}"
     mode: "0600"
     owner: root
@@ -113,8 +113,8 @@
 
 - name: Copy kube-proxy certificates to worker nodes
   ansible.builtin.copy:
-    src: "{{ certificate_dirs.base_path }}/kube-proxy.pem"
-    dest: "{{ pki_dir }}/kube-proxy.pem"
+    src: "{{ certificate_dirs.base_path }}/kube-proxy.crt"
+    dest: "{{ pki_dir }}/kube-proxy.crt"
     mode: "0644"
     owner: root
     group: root
@@ -122,8 +122,8 @@
 
 - name: Copy kube-proxy keys to worker nodes
   ansible.builtin.copy:
-    src: "{{ certificate_dirs.base_path }}/kube-proxy-key.pem"
-    dest: "{{ pki_dir }}/kube-proxy-key.pem"
+    src: "{{ certificate_dirs.base_path }}/kube-proxy.key"
+    dest: "{{ pki_dir }}/kube-proxy.key"
     mode: "0600"
     owner: root
     group: root
@@ -138,12 +138,12 @@
     group: root
   loop:
     - {
-        src: "{{ certificate_dirs.base_path }}/etcd.pem",
+        src: "{{ certificate_dirs.base_path }}/etcd-server.crt",
         dest: "{{ etcd_pem }}",
         mode: "0644",
       }
     - {
-        src: "{{ certificate_dirs.base_path }}/etcd-key.pem",
+        src: "{{ certificate_dirs.base_path }}/etcd-server.key",
         dest: "{{ etcd_key_pem }}",
         mode: "0600",
       }

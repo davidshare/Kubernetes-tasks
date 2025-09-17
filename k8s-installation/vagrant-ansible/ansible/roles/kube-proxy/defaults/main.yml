@@ -1,0 +1,4 @@
+# Kube-proxy paths
+kube_proxy_binary_dest: /usr/local/bin/kube-proxy
+kube_proxy_config: "{{ config_dir }}/kube-proxy-config.yaml"
+kube_proxy_service: /etc/systemd/system/kube-proxy.service
