@@ -6,6 +6,3 @@
 
 - name: Install kube-scheduler
   include_tasks: install_scheduler.yml
-
-- name: Install kubectl on master
-  include_tasks: ../roles/common/tasks/install_kubectl.yml

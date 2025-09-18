@@ -1,2 +1,0 @@
-- name: Setup kubectl on jumpbox
-  include_tasks: ../roles/common/tasks/install_kubectl.yml

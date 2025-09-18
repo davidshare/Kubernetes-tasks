@@ -1,6 +1,0 @@
-- name: Generate kubernetes certificate and key
-  ansible.builtin.shell: "{{ cfssl_binary }} gencert -ca={{ role_path }}/files/ca.pem -ca-key={{ role_path }}/files/ca-key.pem -config={{ ca_config }} -profile={{ ca_profile }} {{ kubernetes_csr }} | {{ cfssljson_binary }} -bare apiserver"
-  args:
-    chdir: "{{ role_path }}/files"
-    creates: "{{ role_path }}/files/apiserver.pem"
-  when: not ansible_check_mode

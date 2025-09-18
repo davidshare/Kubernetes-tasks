@@ -1,2 +1,0 @@
-- name: Copy certificates to nodes
-  include_tasks: copy_certs.yml
