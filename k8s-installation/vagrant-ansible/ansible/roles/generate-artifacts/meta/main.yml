@@ -1,0 +1,7 @@
+dependencies:
+  - download-artifacts # Requires binaries if any, but mainly paths
+galaxy_info:
+  role_name: generate-artifacts
+  author: David Essien
+  description: Generate certificates and kubeconfigs for Kubernetes cluster
+  license: MIT

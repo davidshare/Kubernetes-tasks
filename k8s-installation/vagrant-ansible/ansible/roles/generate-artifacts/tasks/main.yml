@@ -1,0 +1,5 @@
+- name: Generate certificates
+  include_tasks: generate-certs.yml
+
+- name: Generate kubeconfigs
+  include_tasks: generate-kubeconfigs.yml
