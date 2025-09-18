@@ -1,0 +1,52 @@
+- name: Ensure config directory exists on jumpbox
+  ansible.builtin.file:
+    path: "{{ config_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: inventory_hostname == 'jumpbox' and not ansible_check_mode
+
+- name: Copy admin kubeconfig from master1 to jumpbox
+  ansible.builtin.copy:
+    src: "{{ config_dir }}/admin.kubeconfig"
+    dest: "{{ config_dir }}/admin.kubeconfig"
+    owner: root
+    group: root
+    mode: "0600"
+    remote_src: true
+  when: inventory_hostname == 'jumpbox' and not ansible_check_mode
+  delegate_to: master1
+
+- name: Verify admin kubeconfig exists on jumpbox
+  ansible.builtin.stat:
+    path: "{{ config_dir }}/admin.kubeconfig"
+  register: kubeconfig_stat
+  when: inventory_hostname == 'jumpbox' and not ansible_check_mode
+
+- name: Fail if admin kubeconfig is missing
+  ansible.builtin.fail:
+    msg: "admin.kubeconfig not found at {{ config_dir }}/admin.kubeconfig on jumpbox"
+  when: inventory_hostname == 'jumpbox' and not ansible_check_mode and not kubeconfig_stat.stat.exists
+
+- name: Verify kubectl can connect to cluster
+  ansible.builtin.command:
+    cmd: kubectl --kubeconfig={{ config_dir }}/admin.kubeconfig get nodes
+  register: kubectl_check
+  failed_when: false
+  changed_when: false
+  when: inventory_hostname == 'jumpbox' and not ansible_check_mode
+
+- name: Display cluster connection status
+  ansible.builtin.debug:
+    msg: |
+      kubectl connection status: {% if kubectl_check is defined and kubectl_check.rc is defined %}
+        {% if kubectl_check.rc == 0 %}
+          Connected successfully. Output: {{ kubectl_check.stdout }}
+        {% else %}
+          Failed to connect. Error: {{ kubectl_check.stderr }}
+        {% endif %}
+      {% else %}
+        Check command did not run or failed to register.
+      {% endif %}
+  when: inventory_hostname == 'jumpbox' and not ansible_check_mode

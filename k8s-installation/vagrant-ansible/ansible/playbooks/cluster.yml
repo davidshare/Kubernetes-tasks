@@ -33,3 +33,6 @@
 
 - name: Harden cluster
   import_playbook: 11-hardening.yml
+
+- name: Post-setup configuration
+  import_playbook: 12-post-setup.yml

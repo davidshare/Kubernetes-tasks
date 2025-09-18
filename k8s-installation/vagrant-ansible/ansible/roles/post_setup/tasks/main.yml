@@ -1,0 +1,3 @@
+- name: Configure kubectl on jumpbox (post-bootstrap)
+  include_tasks: ../jumpbox_setup/tasks/configure_kubectl.yml
+  when: inventory_hostname == 'jumpbox'
