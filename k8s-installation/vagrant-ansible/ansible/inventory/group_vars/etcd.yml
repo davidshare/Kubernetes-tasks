@@ -11,6 +11,6 @@ etcd_args:
   - --initial-cluster=master1=https://192.168.56.11:2380
   - --initial-cluster-state=new
   - --listen-client-urls=https://0.0.0.0:2379
-  - --advertise-client-urls=https://{{ ansible_host }}:2379
+  - --advertise-client-urls=https://{{ kubernetes_public_address }}:2379
   - --listen-peer-urls=https://0.0.0.0:2380
-  - --initial-advertise-peer-urls=https://{{ ansible_host }}:2380
+  - --initial-advertise-peer-urls=https://{{ kubernetes_public_address }}:2380

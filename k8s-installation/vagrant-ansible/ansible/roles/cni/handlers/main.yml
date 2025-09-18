@@ -1,4 +1,4 @@
 - name: Apply CNI
   ansible.builtin.command:
-    cmd: "kubectl apply -f /etc/kubernetes/{{ cni_plugin }}.yml"
+    cmd: "kubectl --kubeconfig={{ config_dir }}/admin.kubeconfig apply -f /etc/kubernetes/{{ cni_plugin }}.yml"
   changed_when: true

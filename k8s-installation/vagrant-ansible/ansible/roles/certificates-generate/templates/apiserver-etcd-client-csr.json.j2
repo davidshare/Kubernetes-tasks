@@ -1,5 +1,5 @@
 {
-  "CN": "etcd",
+  "CN": "kube-apiserver-etcd-client",
   "key": {
     "algo": "rsa",
     "size": 2048
@@ -8,16 +8,9 @@
     {
       "C": "US",
       "L": "Portland",
-      "O": "etcd",
+      "O": "system:masters",
       "OU": "Kubernetes",
       "ST": "Oregon"
     }
-  ],
-  "hosts": [
-    "127.0.0.1",
-    "{{ kubernetes_public_address }}",
-    "localhost",
-    "etcd",
-    "etcd.local"
   ]
 }

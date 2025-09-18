@@ -3,6 +3,9 @@ kube_apiserver_bind_address: 0.0.0.0
 kube_apiserver_port: "{{ api_server_port }}"
 kube_apiserver_args:
   - --etcd-servers=https://192.168.56.11:2379
+  - --etcd-cafile={{ pki_dir }}/ca.pem
+  - --etcd-certfile={{ pki_dir }}/apiserver-etcd-client.pem
+  - --etcd-keyfile={{ pki_dir }}/apiserver-etcd-client-key.pem
   - --client-ca-file={{ pki_dir }}/ca.pem
   - --service-account-key-file={{ pki_dir }}/sa.pub
   - --service-account-signing-key-file={{ pki_dir }}/sa-key.pem

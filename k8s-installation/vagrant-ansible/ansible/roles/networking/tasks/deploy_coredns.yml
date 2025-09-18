@@ -10,6 +10,6 @@
 
 - name: Apply CoreDNS configuration
   ansible.builtin.command:
-    cmd: "kubectl apply -f {{ coredns_manifest }}"
+    cmd: "kubectl --kubeconfig={{ config_dir }}/admin.kubeconfig apply -f {{ coredns_manifest }}"
   changed_when: true
   when: inventory_hostname == 'master1'

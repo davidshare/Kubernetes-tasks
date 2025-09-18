@@ -15,7 +15,7 @@ spec:
     protocol: TCP
   selector:
     k8s-app: kube-dns
-  clusterIP: "{{ service_cidr | ipaddr('10') }}"
+  clusterIP: "{{ service_cidr | ipaddr('10') | ipaddr('address') }}"
 ---
 apiVersion: apps/v1
 kind: Deployment

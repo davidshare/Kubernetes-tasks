@@ -52,6 +52,12 @@
     dest: "{{ etcd_csr }}"
     mode: "0644"
 
+- name: Create apiserver-etcd-client CSR file
+  ansible.builtin.template:
+    src: apiserver-etcd-client-csr.json.j2
+    dest: "{{ apiserver_etcd_client_csr }}"
+    mode: "0644"
+
 - name: Create service account CSR file
   ansible.builtin.template:
     src: service-account-csr.json.j2

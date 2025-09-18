@@ -1,6 +1,12 @@
+# - name: Approve CSRs
+#   ansible.builtin.command:
+#     cmd: "kubectl certificate approve {{ item }}"
+#   loop: "{{ q('kubernetes.core.k8s', api_version='certificates.k8s.io/v1', kind='CertificateSigningRequest') | json_query('[].metadata.name') }}"
+#   changed_when: true
+#   when: inventory_hostname == 'master1'
+
 - name: Approve CSRs
-  ansible.builtin.command:
-    cmd: "kubectl certificate approve {{ item }}"
-  loop: "{{ q('kubernetes.core.k8s', api_version='certificates.k8s.io/v1', kind='CertificateSigningRequest') | json_query('[].metadata.name') }}"
+  ansible.builtin.shell: |
+    kubectl --kubeconfig={{ config_dir }}/admin.kubeconfig get csr -o name | xargs -r kubectl --kubeconfig={{ config_dir }}/admin.kubeconfig certificate approve
   changed_when: true
   when: inventory_hostname == 'master1'

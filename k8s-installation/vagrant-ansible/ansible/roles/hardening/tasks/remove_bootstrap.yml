@@ -1,5 +1,17 @@
-- name: Remove bootstrap token secret
-  ansible.builtin.command:
-    cmd: "kubectl -n kube-system delete secret bootstrap-token-{{ bootstrap_token_id }}"
+- name: Remove bootstrap token secrets
+  ansible.builtin.shell: |
+    # Get all bootstrap token secrets
+    secrets=$(kubectl --kubeconfig={{ config_dir }}/admin.kubeconfig -n kube-system get secret -o name | grep bootstrap-token || true)
+
+    # Delete each secret individually
+    if [ -n "$secrets" ]; then
+      for secret in $secrets; do
+        # Extract just the secret name (remove 'secret/' prefix)
+        secret_name=$(echo "$secret" | sed 's|^secret/||')
+        kubectl --kubeconfig={{ config_dir }}/admin.kubeconfig -n kube-system delete secret "$secret_name" --ignore-not-found
+      done
+    fi
+  args:
+    executable: /bin/bash
   changed_when: true
   when: inventory_hostname == 'master1'

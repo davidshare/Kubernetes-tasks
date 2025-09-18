@@ -8,6 +8,7 @@ kube_scheduler_csr: "{{ role_path }}/files/kube-scheduler-csr.json"
 kubelet_csr: "{{ role_path }}/files/kubelet-csr.json"
 kube_proxy_csr: "{{ role_path }}/files/kube-proxy-csr.json"
 etcd_csr: "{{ role_path }}/files/etcd-csr.json"
+apiserver_etcd_client_csr: "{{ role_path }}/files/apiserver-etcd-client-csr.json"
 service_account_csr: "{{ role_path }}/files/service-account-csr.json"
 
 # Certificate output paths

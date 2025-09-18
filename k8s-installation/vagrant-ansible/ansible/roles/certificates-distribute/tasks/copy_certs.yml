@@ -147,6 +147,16 @@
         dest: "{{ etcd_key_pem }}",
         mode: "0600",
       }
+    - {
+        src: "{{ certificate_dirs.base_path }}/apiserver-etcd-client.pem",
+        dest: "{{ pki_dir }}/apiserver-etcd-client.pem",
+        mode: "0644",
+      }
+    - {
+        src: "{{ certificate_dirs.base_path }}/apiserver-etcd-client-key.pem",
+        dest: "{{ pki_dir }}/apiserver-etcd-client-key.pem",
+        mode: "0600",
+      }
   when: inventory_hostname in groups['masters']
 
 - name: Verify CA certificate was copied successfully

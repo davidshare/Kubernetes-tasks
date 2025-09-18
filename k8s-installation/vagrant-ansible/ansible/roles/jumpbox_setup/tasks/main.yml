@@ -162,7 +162,4 @@
   become: yes
 
 - name: Setup kubectl on jumpbox
-  hosts: jumpboxes
-  become: yes
-  tasks:
-    - include_tasks: ../roles/common/tasks/install_kubectl.yml
+  include_tasks: ../roles/common/tasks/install_kubectl.yml

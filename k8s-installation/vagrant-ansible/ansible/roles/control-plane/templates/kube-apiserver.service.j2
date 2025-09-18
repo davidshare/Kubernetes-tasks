@@ -9,9 +9,7 @@ ExecStart={{ apiserver_binary_dest }} \
     {{ arg }} \
 {% endfor %}
     --bind-address={{ kube_apiserver_bind_address }} \
-    --secure-port={{ kube_apiserver_port }} \
-    --tls-cert-file={{ pki_dir }}/{{ kubernetes_cert_file }} \
-    --tls-private-key-file={{ pki_dir }}/{{ kubernetes_key_file }}
+    --secure-port={{ kube_apiserver_port }}
 Restart=on-failure
 LimitNOFILE=65536
 
