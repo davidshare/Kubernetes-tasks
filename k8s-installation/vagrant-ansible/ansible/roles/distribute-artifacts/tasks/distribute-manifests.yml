@@ -1,0 +1,30 @@
+- name: Ensure manifests directory exists on masters
+  file:
+    path: "{{ paths.kubernetes.manifests_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: inventory_hostname in groups['masters']
+
+- name: Distribute Flannel manifest to masters
+  copy:
+    src: "{{ paths.artifacts.manifests }}/kube-flannel.yml"
+    dest: "{{ paths.kubernetes.manifests_dir }}/kube-flannel.yml"
+    mode: "0644"
+    owner: root
+    group: root
+  when: inventory_hostname in groups['masters'] and cni_plugin == 'flannel'
+  retries: "{{ distribute_retries }}"
+  delegate_to: localhost
+
+- name: Distribute Calico manifest to masters
+  copy:
+    src: "{{ paths.artifacts.manifests }}/calico.yaml"
+    dest: "{{ paths.kubernetes.manifests_dir }}/calico.yaml"
+    mode: "0644"
+    owner: root
+    group: root
+  when: inventory_hostname in groups['masters'] and cni_plugin == 'calico'
+  retries: "{{ distribute_retries }}"
+  delegate_to: localhost

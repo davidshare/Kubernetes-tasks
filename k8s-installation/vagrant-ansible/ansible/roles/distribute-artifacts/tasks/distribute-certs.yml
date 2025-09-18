@@ -1,0 +1,129 @@
+- name: Ensure PKI directory exists on nodes
+  file:
+    path: "{{ paths.kubernetes.pki_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Distribute CA certificate to all nodes
+  copy:
+    src: "{{ paths.artifacts.certs }}/{{ item }}"
+    dest: "{{ paths.kubernetes.pki_dir }}/{{ item }}"
+    mode: "0644"
+    owner: root
+    group: root
+  loop:
+    - ca.pem
+    - ca-key.pem
+  when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+  retries: "{{ distribute_retries }}"
+  delegate_to: localhost
+
+- name: Distribute API server certificates to masters
+  copy:
+    src: "{{ paths.artifacts.certs }}/{{ item }}"
+    dest: "{{ paths.kubernetes.pki_dir }}/{{ item }}"
+    mode: "0600"
+    owner: root
+    group: root
+  loop:
+    - apiserver.pem
+    - apiserver-key.pem
+  when: inventory_hostname in groups['masters']
+  retries: "{{ distribute_retries }}"
+  delegate_to: localhost
+
+- name: Distribute controller manager certificates to masters
+  copy:
+    src: "{{ paths.artifacts.certs }}/{{ item }}"
+    dest: "{{ paths.kubernetes.pki_dir }}/{{ item }}"
+    mode: "0600"
+    owner: root
+    group: root
+  loop:
+    - kube-controller-manager.pem
+    - kube-controller-manager-key.pem
+  when: inventory_hostname in groups['masters']
+  retries: "{{ distribute_retries }}"
+  delegate_to: localhost
+
+- name: Distribute scheduler certificates to masters
+  copy:
+    src: "{{ paths.artifacts.certs }}/{{ item }}"
+    dest: "{{ paths.kubernetes.pki_dir }}/{{ item }}"
+    mode: "0600"
+    owner: root
+    group: root
+  loop:
+    - kube-scheduler.pem
+    - kube-scheduler-key.pem
+  when: inventory_hostname in groups['masters']
+  retries: "{{ distribute_retries }}"
+  delegate_to: localhost
+
+- name: Distribute service account keys to masters
+  copy:
+    src: "{{ paths.artifacts.certs }}/{{ item }}"
+    dest: "{{ paths.kubernetes.pki_dir }}/{{ item }}"
+    mode: "0600"
+    owner: root
+    group: root
+  loop:
+    - sa.pub
+    - sa-key.pem
+  when: inventory_hostname in groups['masters']
+  retries: "{{ distribute_retries }}"
+  delegate_to: localhost
+
+- name: Distribute etcd certificates to masters
+  copy:
+    src: "{{ paths.artifacts.certs }}/{{ item }}"
+    dest: "{{ paths.etcd.cert_dir }}/{{ item }}"
+    mode: "0600"
+    owner: root
+    group: root
+  loop:
+    - etcd-server.pem
+    - etcd-server-key.pem
+    - apiserver-etcd-client.pem
+    - apiserver-etcd-client-key.pem
+  when: inventory_hostname in groups['masters']
+  retries: "{{ distribute_retries }}"
+  delegate_to: localhost
+
+- name: Distribute kubelet certificates to nodes
+  copy:
+    src: "{{ paths.artifacts.certs }}/{{ inventory_hostname }}.pem"
+    dest: "{{ paths.kubernetes.pki_dir }}/kubelet.pem"
+    mode: "0600"
+    owner: root
+    group: root
+  when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+  retries: "{{ distribute_retries }}"
+  delegate_to: localhost
+
+- name: Distribute kubelet private key to nodes
+  copy:
+    src: "{{ paths.artifacts.certs }}/kubelet-key.pem"
+    dest: "{{ paths.kubernetes.pki_dir }}/kubelet-key.pem"
+    mode: "0600"
+    owner: root
+    group: root
+  when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+  retries: "{{ distribute_retries }}"
+  delegate_to: localhost
+
+- name: Distribute kube-proxy certificates to workers
+  copy:
+    src: "{{ paths.artifacts.certs }}/{{ item }}"
+    dest: "{{ paths.kubernetes.pki_dir }}/{{ item }}"
+    mode: "0600"
+    owner: root
+    group: root
+  loop:
+    - kube-proxy.pem
+    - kube-proxy-key.pem
+  when: inventory_hostname in groups['workers']
+  retries: "{{ distribute_retries }}"
+  delegate_to: localhost

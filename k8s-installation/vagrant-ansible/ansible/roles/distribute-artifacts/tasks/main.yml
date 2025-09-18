@@ -1,0 +1,11 @@
+- name: Distribute binaries
+  include_tasks: distribute-binaries.yml
+
+- name: Distribute certificates
+  include_tasks: distribute-certs.yml
+
+- name: Distribute kubeconfigs
+  include_tasks: distribute-kubeconfigs.yml
+
+- name: Distribute manifests
+  include_tasks: distribute-manifests.yml

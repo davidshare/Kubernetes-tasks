@@ -1,0 +1,7 @@
+dependencies:
+  - generate-artifacts # Requires certs and kubeconfigs
+galaxy_info:
+  role_name: distribute-artifacts
+  author: yourname
+  description: Distribute binaries, certificates, and kubeconfigs to Kubernetes nodes
+  license: MIT

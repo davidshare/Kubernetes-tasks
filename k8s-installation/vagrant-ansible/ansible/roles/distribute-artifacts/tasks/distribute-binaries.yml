@@ -1,0 +1,89 @@
+- name: Ensure binary destination directory exists on nodes
+  file:
+    path: "/usr/local/bin"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Distribute Kubernetes binaries to masters
+  copy:
+    src: "{{ paths.artifacts.binaries }}/{{ item }}"
+    dest: "/usr/local/bin/{{ item }}"
+    mode: "0755"
+    owner: root
+    group: root
+  loop:
+    - kube-apiserver
+    - kube-controller-manager
+    - kube-scheduler
+    - kubectl
+  when: inventory_hostname in groups['masters']
+  retries: "{{ distribute_retries }}"
+  delegate_to: localhost
+
+- name: Distribute kubectl to jumpbox
+  copy:
+    src: "{{ paths.artifacts.binaries }}/kubectl"
+    dest: "/usr/local/bin/kubectl"
+    mode: "0755"
+    owner: root
+    group: root
+  when: inventory_hostname == 'jumpbox'
+  retries: "{{ distribute_retries }}"
+  delegate_to: localhost
+
+- name: Distribute Kubernetes binaries to workers
+  copy:
+    src: "{{ paths.artifacts.binaries }}/{{ item }}"
+    dest: "/usr/local/bin/{{ item }}"
+    mode: "0755"
+    owner: root
+    group: root
+  loop:
+    - kubelet
+    - kube-proxy
+    - kubectl
+  when: inventory_hostname in groups['workers']
+  retries: "{{ distribute_retries }}"
+  delegate_to: localhost
+
+- name: Distribute etcd binaries to masters
+  copy:
+    src: "{{ paths.artifacts.binaries }}/{{ item }}"
+    dest: "/usr/local/bin/{{ item }}"
+    mode: "0755"
+    owner: root
+    group: root
+  loop:
+    - etcd
+    - etcdctl
+  when: inventory_hostname in groups['masters']
+  retries: "{{ distribute_retries }}"
+  delegate_to: localhost
+
+- name: Distribute containerd binaries to all nodes
+  copy:
+    src: "{{ paths.artifacts.binaries }}/{{ item }}"
+    dest: "/usr/local/bin/{{ item }}"
+    mode: "0755"
+    owner: root
+    group: root
+  loop:
+    - containerd
+    - containerd-shim-runc-v2
+    - ctr
+  when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+  retries: "{{ distribute_retries }}"
+  delegate_to: localhost
+
+- name: Distribute runc binary to all nodes
+  copy:
+    src: "{{ paths.artifacts.binaries }}/runc"
+    dest: "/usr/local/bin/runc"
+    mode: "0755"
+    owner: root
+    group: root
+  when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+  retries: "{{ distribute_retries }}"
+  delegate_to: localhost

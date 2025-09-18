@@ -1,5 +1,2 @@
-- name: Generate kubeconfig files
-  include_tasks: generate_kubeconfigs.yml
-
 - name: Configure bootstrap
   include_tasks: configure_bootstrap.yml
