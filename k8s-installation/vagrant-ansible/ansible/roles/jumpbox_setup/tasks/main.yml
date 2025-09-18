@@ -1,3 +1,23 @@
+- name: Ensure role directories exist
+  ansible.builtin.file:
+    path: "/home/vagrant/k8s-project/ansible/roles/{{ item }}/files"
+    state: directory
+    owner: vagrant # Match the vagrant user
+    group: vagrant # Match the vagrant group
+    mode: "0755" # Standard directory permissions (rwx for owner, rx for group/others)
+  loop:
+    - certificates-generate
+    - etcd
+    - control-plane
+    - kubelet
+    - kube-proxy
+    - container-runtime
+    - networking
+    - cni
+  when: inventory_hostname == 'jumpbox'
+  become: yes # Need sudo to create directories as vagrant user
+  become_user: vagrant
+
 - name: Download binaries with correct executable permissions
   ansible.builtin.get_url:
     url: "{{ item.url }}"
@@ -96,15 +116,12 @@
 - name: Move containerd binaries to correct location
   ansible.builtin.shell: |
     cd /home/vagrant/k8s-project/ansible/roles/container-runtime/files/
-    mv containerd-2.0.0-linux-amd64/bin/* .
-    rm -rf containerd-2.0.0-linux-amd64
+    mv bin/* .
   when: inventory_hostname == 'jumpbox'
 
 - name: Move etcd binaries to correct location
   ansible.builtin.shell: |
     cd /home/vagrant/k8s-project/ansible/roles/etcd/files/
-    mv etcd-v3.6.0-linux-amd64/* .
-    rm -rf etcd-v3.6.0-linux-amd64
   when: inventory_hostname == 'jumpbox'
 
 - name: Set executable permissions on extracted binaries
@@ -113,10 +130,39 @@
     mode: "0755"
   loop:
     - /home/vagrant/k8s-project/ansible/roles/container-runtime/files/containerd
-    - /home/vagrant/k8s-project/ansible/roles/container-runtime/files/containerd-shim
-    - /home/vagrant/k8s-project/ansible/roles/container-runtime/files/containerd-shim-runc-v1
     - /home/vagrant/k8s-project/ansible/roles/container-runtime/files/containerd-shim-runc-v2
     - /home/vagrant/k8s-project/ansible/roles/container-runtime/files/ctr
     - /home/vagrant/k8s-project/ansible/roles/etcd/files/etcd
     - /home/vagrant/k8s-project/ansible/roles/etcd/files/etcdctl
   when: inventory_hostname == 'jumpbox'
+
+- name: Clean up containerd unnecessary files (preserve archives)
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /home/vagrant/k8s-project/ansible/roles/container-runtime/files/bin
+    - /home/vagrant/k8s-project/ansible/roles/container-runtime/files/containerd-stress
+  when: inventory_hostname == 'jumpbox'
+  become: yes
+
+- name: Clean up etcd unnecessary files (preserve archives)
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /home/vagrant/k8s-project/ansible/roles/etcd/files/etcd-v3.6.0-linux-amd64
+    - /home/vagrant/k8s-project/ansible/roles/etcd/files/README-etcdctl.md
+    - /home/vagrant/k8s-project/ansible/roles/etcd/files/README-etcdutl.md
+    - /home/vagrant/k8s-project/ansible/roles/etcd/files/README.md
+    - /home/vagrant/k8s-project/ansible/roles/etcd/files/READMEv2-etcdctl.md
+    - /home/vagrant/k8s-project/ansible/roles/etcd/files/Documentation
+    - /home/vagrant/k8s-project/ansible/roles/etcd/files/etcdutl
+  when: inventory_hostname == 'jumpbox'
+  become: yes
+
+- name: Setup kubectl on jumpbox
+  hosts: jumpboxes
+  become: yes
+  tasks:
+    - include_tasks: ../roles/common/tasks/install_kubectl.yml

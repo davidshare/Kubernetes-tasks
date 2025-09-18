@@ -1,0 +1,10 @@
+- name: Install kubectl binary
+  ansible.builtin.copy:
+    src: "{{ kubectl_binary }}"
+    dest: /usr/local/bin/kubectl
+    mode: "0755"
+    owner: root
+    group: root
+  when: 
+    - inventory_hostname in groups['masters'] 
+    or inventory_hostname in groups['jumpboxes']

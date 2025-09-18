@@ -6,6 +6,7 @@ kube_apiserver_args:
   - --client-ca-file={{ pki_dir }}/ca.pem
   - --service-account-key-file={{ pki_dir }}/sa.pub
   - --service-account-signing-key-file={{ pki_dir }}/sa-key.pem
+  - --service-account-issuer=https://kubernetes.default.svc.cluster.local
   - --tls-cert-file={{ pki_dir }}/apiserver.pem
   - --tls-private-key-file={{ pki_dir }}/apiserver-key.pem
   - --service-cluster-ip-range={{ service_cidr }}

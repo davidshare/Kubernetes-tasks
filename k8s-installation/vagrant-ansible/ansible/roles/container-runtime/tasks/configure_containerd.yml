@@ -4,10 +4,22 @@
     dest: "{{ containerd_binary_dest }}"
     mode: "0755"
 
+- name: Copy containerd-shim-runc-v2 binary
+  ansible.builtin.copy:
+    src: "{{ containerd_binary | dirname }}/containerd-shim-runc-v2"
+    dest: "{{ containerd_shim_binary_dest }}"
+    mode: "0755"
+
 - name: Copy runc binary
   ansible.builtin.copy:
     src: "{{ runc_binary }}"
     dest: "{{ runc_binary_dest }}"
+    mode: "0755"
+
+- name: Copy ctr binary
+  ansible.builtin.copy:
+    src: "{{ containerd_binary | dirname }}/ctr"
+    dest: "{{ ctr_binary_dest }}"
     mode: "0755"
 
 - name: Ensure containerd configuration directory exists

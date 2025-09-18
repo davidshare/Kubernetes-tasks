@@ -6,3 +6,11 @@
 
 - name: Install kube-scheduler
   include_tasks: install_scheduler.yml
+
+- name: Configure Kubernetes control plane
+  hosts: masters
+  become: yes
+  roles:
+    - control-plane
+  tasks:
+    - include_tasks: ../roles/common/tasks/install_kubectl.yml

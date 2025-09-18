@@ -1,9 +1,3 @@
-- name: Copy kubectl binary
-  ansible.builtin.copy:
-    src: "{{ kubectl_binary }}"
-    dest: "{{ kubectl_binary}}"
-    mode: "0755"
-
 - name: Apply CoreDNS manifest
   ansible.builtin.template:
     src: coredns-deployment.yaml.j2
@@ -16,6 +10,6 @@
 
 - name: Apply CoreDNS configuration
   ansible.builtin.command:
-    cmd: "{{ kubectl_binary}} apply -f {{ coredns_manifest }}"
+    cmd: "kubectl apply -f {{ coredns_manifest }}"
   changed_when: true
   when: inventory_hostname == 'master1'

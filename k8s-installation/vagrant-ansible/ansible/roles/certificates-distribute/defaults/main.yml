@@ -17,8 +17,8 @@ kube_scheduler_pem: "{{ pki_dir }}/kube-scheduler.pem"
 kube_scheduler_key_pem: "{{ pki_dir }}/kube-scheduler-key.pem"
 kubelet_pem: "{{ pki_dir }}/kubelet.pem"
 kubelet_key_pem: "{{ pki_dir }}/kubelet-key.pem"
-etcd_pem: "{{ etcd_cert_dir }}/server.pem"
-etcd_key_pem: "{{ etcd_cert_dir }}/server-key.pem"
+etcd_pem: "{{ etcd_cert_dir }}/etcd-server.pem"
+etcd_key_pem: "{{ etcd_cert_dir }}/etcd-server-key.pem"
 
 # Kubelet certificate filenames
 kubelet_cert_file: "{{ inventory_hostname }}.pem"

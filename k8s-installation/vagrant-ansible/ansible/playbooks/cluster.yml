@@ -16,8 +16,8 @@
 - name: Setup container runtime
   import_playbook: 05-container-runtime.yml
 
-- name: Setup CNI
-  import_playbook: 06-cni.yml
+- name: Bootstrap cluster
+  import_playbook: 09-bootstrap.yml
 
 - name: Setup kubelet
   import_playbook: 07-kubelet.yml
@@ -25,8 +25,8 @@
 - name: Setup kube-proxy
   import_playbook: 08-kube-proxy.yml
 
-- name: Bootstrap cluster
-  import_playbook: 09-bootstrap.yml
+- name: Setup CNI
+  import_playbook: 06-cni.yml
 
 - name: Setup networking
   import_playbook: 10-networking.yml
