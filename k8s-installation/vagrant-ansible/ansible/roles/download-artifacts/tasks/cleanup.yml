@@ -1,0 +1,33 @@
+- name: Clean up containerd unnecessary directories
+  ansible.builtin.file:
+    path: "{{ paths.artifacts.binaries }}/bin"
+    state: absent
+  when: inventory_hostname == 'jumpbox'
+  delegate_to: localhost
+
+- name: Clean up containerd unnecessary files
+  ansible.builtin.file:
+    path: "{{ paths.artifacts.binaries }}/containerd-stress"
+    state: absent
+  when: inventory_hostname == 'jumpbox'
+  delegate_to: localhost
+
+- name: Clean up etcd unnecessary directories
+  ansible.builtin.file:
+    path: "{{ paths.artifacts.binaries }}/etcd-v{{ versions.etcd }}-linux-amd64"
+    state: absent
+  when: inventory_hostname == 'jumpbox'
+  delegate_to: localhost
+
+- name: Clean up etcd unnecessary files
+  ansible.builtin.file:
+    path: "{{ paths.artifacts.binaries }}/{{ item }}"
+    state: absent
+  loop:
+    - README-etcdctl.md
+    - README-etcdutl.md
+    - README.md
+    - READMEv2-etcdctl.md
+    - etcdutl
+  when: inventory_hostname == 'jumpbox'
+  delegate_to: localhost

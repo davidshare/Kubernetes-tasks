@@ -1,0 +1,30 @@
+- name: Download etcd tarball with checksum
+  get_url:
+    url: "{{ download_urls.etcd.tarball }}"
+    dest: "{{ paths.artifacts.binaries }}/etcd-v{{ versions.etcd }}-linux-amd64.tar.gz"
+    mode: "0644"
+    checksum: "{{ checksums.etcd.tarball }}"
+    timeout: "{{ download_timeout }}"
+  retries: "{{ download_retries }}"
+  delegate_to: localhost
+
+- name: Extract etcd tarball
+  unarchive:
+    src: "{{ paths.artifacts.binaries }}/etcd-v{{ versions.etcd }}-linux-amd64.tar.gz"
+    dest: "{{ paths.artifacts.binaries }}"
+    remote_src: yes
+    creates: "{{ paths.artifacts.binaries }}/etcd-v{{ versions.etcd }}-linux-amd64/etcd"
+  delegate_to: localhost
+
+- name: Move etcd binaries and set permissions
+  copy:
+    src: "{{ paths.artifacts.binaries }}/etcd-v{{ versions.etcd }}-linux-amd64/{{ item }}"
+    dest: "{{ paths.artifacts.binaries }}/{{ item }}"
+    remote_src: yes
+    mode: "0755"
+    owner: vagrant
+    group: vagrant
+  loop:
+    - etcd
+    - etcdctl
+  delegate_to: localhost

@@ -1,0 +1,33 @@
+- name: Download containerd tarball with checksum
+  get_url:
+    url: "{{ download_urls.containerd.tarball }}"
+    dest: "{{ paths.artifacts.binaries }}/containerd-{{ versions.containerd }}-linux-amd64.tar.gz"
+    mode: "0644"
+    checksum: "{{ checksums.containerd.tarball }}"
+    timeout: "{{ download_timeout }}"
+  retries: "{{ download_retries }}"
+  delegate_to: localhost
+
+- name: Extract containerd tarball
+  unarchive:
+    src: "{{ paths.artifacts.binaries }}/containerd-{{ versions.containerd }}-linux-amd64.tar.gz"
+    dest: "{{ paths.artifacts.binaries }}"
+    remote_src: yes
+    creates: "{{ paths.artifacts.binaries }}/bin/containerd"
+  delegate_to: localhost
+
+- name: Move containerd binaries and set permissions
+  copy:
+    src: "{{ paths.artifacts.binaries }}/bin/{{ item }}"
+    dest: "{{ paths.artifacts.binaries }}/{{ item }}"
+    remote_src: yes
+    mode: "0755"
+    owner: vagrant
+    group: vagrant
+  loop:
+    - containerd
+    - containerd-shim
+    - containerd-shim-runc-v1
+    - containerd-shim-runc-v2
+    - ctr
+  delegate_to: localhost

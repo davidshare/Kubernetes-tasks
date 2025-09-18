@@ -1,0 +1,2 @@
+download_timeout: 300
+download_retries: 3

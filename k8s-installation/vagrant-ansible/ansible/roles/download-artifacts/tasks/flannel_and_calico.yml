@@ -1,0 +1,21 @@
+- name: Download Flannel manifest
+  get_url:
+    url: "{{ download_urls.manifests.flannel }}"
+    dest: "{{ paths.artifacts.manifests }}/kube-flannel.yml"
+    mode: "0644"
+    owner: vagrant
+    group: vagrant
+    timeout: "{{ download_timeout }}"
+  retries: "{{ download_retries }}"
+  delegate_to: localhost
+
+- name: Download Calico manifest
+  get_url:
+    url: "{{ download_urls.manifests.calico }}"
+    dest: "{{ paths.artifacts.manifests }}/calico.yaml"
+    mode: "0644"
+    owner: vagrant
+    group: vagrant
+    timeout: "{{ download_timeout }}"
+  retries: "{{ download_retries }}"
+  delegate_to: localhost

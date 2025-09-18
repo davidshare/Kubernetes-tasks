@@ -1,0 +1,22 @@
+- name: Ensure artifacts base directory exists
+  file:
+    path: "{{ paths.artifacts.base }}"
+    state: directory
+    owner: vagrant
+    group: vagrant
+    mode: "0755"
+  delegate_to: localhost
+
+- name: Create artifacts subdirectories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: vagrant
+    group: vagrant
+    mode: "0755"
+  loop:
+    - "{{ paths.artifacts.binaries }}"
+    - "{{ paths.artifacts.certs }}"
+    - "{{ paths.artifacts.kubeconfigs }}"
+    - "{{ paths.artifacts.manifests }}"
+  delegate_to: localhost

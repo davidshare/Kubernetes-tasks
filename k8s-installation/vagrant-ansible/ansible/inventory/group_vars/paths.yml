@@ -1,0 +1,7 @@
+paths:
+  artifacts:
+    base: "/home/vagrant/k8s-project/ansible/artifacts"
+    binaries: "{{ paths.artifacts.base }}/binaries"
+    certs: "{{ paths.artifacts.base }}/certs"
+    kubeconfigs: "{{ paths.artifacts.base }}/kubeconfigs"
+    manifests: "{{ paths.artifacts.base }}/manifests"

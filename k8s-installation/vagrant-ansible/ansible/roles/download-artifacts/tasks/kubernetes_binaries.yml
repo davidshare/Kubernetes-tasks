@@ -1,0 +1,42 @@
+- name: Download Kubernetes binaries with checksums
+  get_url:
+    url: "{{ item.url }}"
+    dest: "{{ paths.artifacts.binaries }}/{{ item.dest }}"
+    mode: "0755"
+    owner: vagrant
+    group: vagrant
+    checksum: "{{ item.checksum }}"
+    timeout: "{{ download_timeout }}"
+  loop:
+    - {
+        url: "{{ download_urls.kubernetes.apiserver }}",
+        dest: "kube-apiserver",
+        checksum: "{{ checksums.kubernetes.apiserver }}",
+      }
+    - {
+        url: "{{ download_urls.kubernetes.controller_manager }}",
+        dest: "kube-controller-manager",
+        checksum: "{{ checksums.kubernetes.controller_manager }}",
+      }
+    - {
+        url: "{{ download_urls.kubernetes.scheduler }}",
+        dest: "kube-scheduler",
+        checksum: "{{ checksums.kubernetes.scheduler }}",
+      }
+    - {
+        url: "{{ download_urls.kubernetes.kubelet }}",
+        dest: "kubelet",
+        checksum: "{{ checksums.kubernetes.kubelet }}",
+      }
+    - {
+        url: "{{ download_urls.kubernetes.kube_proxy }}",
+        dest: "kube-proxy",
+        checksum: "{{ checksums.kubernetes.kube_proxy }}",
+      }
+    - {
+        url: "{{ download_urls.kubernetes.kubectl }}",
+        dest: "kubectl",
+        checksum: "{{ checksums.kubernetes.kubectl }}",
+      }
+  retries: "{{ download_retries }}"
+  delegate_to: localhost

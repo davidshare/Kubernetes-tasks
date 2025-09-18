@@ -1,0 +1,11 @@
+- name: Download runc with checksum
+  get_url:
+    url: "{{ download_urls.runc.binary }}"
+    dest: "{{ paths.artifacts.binaries }}/runc"
+    mode: "0755"
+    owner: vagrant
+    group: vagrant
+    checksum: "{{ checksums.runc.binary }}"
+    timeout: "{{ download_timeout }}"
+  retries: "{{ download_retries }}"
+  delegate_to: localhost
