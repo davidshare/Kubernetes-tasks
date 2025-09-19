@@ -1,0 +1,4 @@
+kubectl_dest: /usr/local/bin/kubectl
+kubeconfig_dest: "{{ config_dir }}/admin.kubeconfig"
+jumpbox_user: "{{ ansible_user | default('vagrant') }}"
+jumpbox_bashrc: "/home/{{ jumpbox_user }}/.bashrc"

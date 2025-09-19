@@ -1,6 +1,7 @@
-- name: Setup jumpbox with binaries
-  connection: local
-  hosts: jumpboxes
+- name: Configure jumpbox for cluster management
+  hosts: jumpbox
   become: yes
+  gather_facts: yes
+  tags: jumpbox
   roles:
-    - jumpbox_setup
+    - jumpbox

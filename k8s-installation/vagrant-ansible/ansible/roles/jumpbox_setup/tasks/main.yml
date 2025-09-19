@@ -1,0 +1,59 @@
+- name: Ensure kubectl binary exists
+  ansible.builtin.stat:
+    path: "{{ kubectl_dest }}"
+  register: kubectl_stat
+  failed_when: not kubectl_stat.stat.exists
+  when: inventory_hostname in groups['jumpbox']
+  tags: jumpbox
+
+- name: Ensure admin kubeconfig exists
+  ansible.builtin.stat:
+    path: "{{ kubeconfig_dest }}"
+  register: kubeconfig_stat
+  failed_when: not kubeconfig_stat.stat.exists
+  when: inventory_hostname in groups['jumpbox']
+  tags: jumpbox
+
+- name: Ensure config directory permissions
+  ansible.builtin.file:
+    path: "{{ config_dir }}"
+    state: directory
+    owner: "{{ jumpbox_user }}"
+    group: "{{ jumpbox_user }}"
+    mode: "0755"
+  become: yes
+  when: inventory_hostname in groups['jumpbox']
+  tags: jumpbox
+
+- name: Ensure admin kubeconfig permissions
+  ansible.builtin.file:
+    path: "{{ kubeconfig_dest }}"
+    owner: "{{ jumpbox_user }}"
+    group: "{{ jumpbox_user }}"
+    mode: "0600"
+  become: yes
+  when: inventory_hostname in groups['jumpbox']
+  tags: jumpbox
+
+- name: Configure KUBECONFIG in user bashrc
+  ansible.builtin.lineinfile:
+    path: "{{ jumpbox_bashrc }}"
+    line: "export KUBECONFIG={{ kubeconfig_dest }}"
+    state: present
+    create: yes
+    owner: "{{ jumpbox_user }}"
+    group: "{{ jumpbox_user }}"
+    mode: "0644"
+  become: yes
+  when: inventory_hostname in groups['jumpbox']
+  tags: jumpbox
+
+- name: Verify cluster access
+  ansible.builtin.command:
+    cmd: kubectl --kubeconfig={{ kubeconfig_dest }} version --client
+  register: kubectl_version
+  changed_when: false
+  environment:
+    KUBECONFIG: "{{ kubeconfig_dest }}"
+  when: inventory_hostname in groups['jumpbox']
+  tags: jumpbox

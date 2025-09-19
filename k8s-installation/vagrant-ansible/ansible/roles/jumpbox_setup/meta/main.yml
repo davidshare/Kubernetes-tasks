@@ -1,1 +1,8 @@
-dependencies: []
+dependencies:
+  - distribute-artifacts
+  - control-plane
+galaxy_info:
+  role_name: jumpbox
+  author: David Essien
+  description: Configure jumpbox node for Kubernetes cluster management
+  license: MIT
