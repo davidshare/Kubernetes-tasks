@@ -1,1 +1,9 @@
-dependencies: []
+dependencies:
+  - control-plane
+  - bootstrap
+  - networking
+galaxy_info:
+  role_name: hardening
+  author: David Essien
+  description: Apply security hardening (RBAC, etcd backups) to Kubernetes cluster
+  license: MIT

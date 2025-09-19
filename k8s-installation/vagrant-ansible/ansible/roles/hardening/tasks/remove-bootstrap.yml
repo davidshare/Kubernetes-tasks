@@ -1,0 +1,18 @@
+- name: Get bootstrap token secrets
+  ansible.builtin.command:
+    cmd: kubectl --kubeconfig={{ hardening_kubeconfig }} -n kube-system get secret -o name | grep bootstrap-token || true
+  register: secrets
+  changed_when: false
+  environment:
+    KUBECONFIG: "{{ hardening_kubeconfig }}"
+  when: inventory_hostname == 'master1'
+  tags: hardening
+
+- name: Delete bootstrap token secrets
+  ansible.builtin.command:
+    cmd: kubectl --kubeconfig={{ hardening_kubeconfig }} -n kube-system delete {{ item }} --ignore-not-found
+  loop: "{{ secrets.stdout_lines }}"
+  environment:
+    KUBECONFIG: "{{ hardening_kubeconfig }}"
+  when: inventory_hostname == 'master1' and secrets.stdout_lines | length > 0
+  tags: hardening

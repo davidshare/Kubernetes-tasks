@@ -1,0 +1,5 @@
+ETCDCTL_API=3 {{ etcdctl_binary }} snapshot save {{ etcd_backup_dir }}/etcd-snapshot-$(date +%Y%m%d%H%M%S).db \
+  --cacert={{ pki_dir }}/ca.pem \
+  --cert={{ pki_dir }}/etcd-server.pem \
+  --key={{ pki_dir }}/etcd-server-key.pem \
+  --endpoints=https://{{ kubernetes_public_address }}:2379

@@ -5,22 +5,20 @@
     owner: root
     group: root
     mode: "0700"
+  become: yes
   when: inventory_hostname in groups['etcd']
+  tags: hardening
 
-- name: Create etcd backup script
-  ansible.builtin.copy:
-    content: |
-      #!/bin/bash
-      ETCDCTL_API=3 {{ etcdctl_binary }} snapshot save {{ etcd_backup_dir }}/etcd-snapshot-$(date +%Y%m%d%H%M%S).db \
-        --cacert={{ pki_dir }}/ca.pem \
-        --cert={{ pki_dir }}/etcd-server.pem \
-        --key={{ pki_dir }}/etcd-server-key.pem \
-        --endpoints=https://{{ kubernetes_public_address }}:2379
+- name: Generate etcd backup script
+  ansible.builtin.template:
+    src: etcd-backup.sh.j2
     dest: "{{ etcd_backup_script }}"
     owner: root
     group: root
     mode: "0755"
+  become: yes
   when: inventory_hostname in groups['etcd']
+  tags: hardening
 
 - name: Schedule etcd backup cron job
   ansible.builtin.cron:
@@ -28,4 +26,6 @@
     minute: "0"
     hour: "2"
     job: "{{ etcd_backup_script }}"
+  become: yes
   when: inventory_hostname in groups['etcd']
+  tags: hardening

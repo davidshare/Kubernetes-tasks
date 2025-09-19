@@ -1,5 +1,7 @@
 - name: Apply security hardening
   hosts: masters:etcd
   become: yes
+  gather_facts: yes
+  tags: hardening
   roles:
     - hardening

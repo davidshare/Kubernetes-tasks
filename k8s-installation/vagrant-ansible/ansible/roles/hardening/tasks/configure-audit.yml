@@ -1,0 +1,11 @@
+- name: Generate audit policy
+  ansible.builtin.template:
+    src: audit-policy.yaml.j2
+    dest: "{{ audit_policy }}"
+    owner: root
+    group: root
+    mode: "0644"
+  become: yes
+  when: inventory_hostname in groups['masters']
+  notify: Restart kube-apiserver for audit
+  tags: hardening
