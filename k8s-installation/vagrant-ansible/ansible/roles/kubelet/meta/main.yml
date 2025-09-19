@@ -1,5 +1,2 @@
 dependencies:
-  - role: common
-  - role: distribute-artifacts
   - role: container-runtime
-  - role: control-plane

@@ -1,4 +1,3 @@
 dependencies:
-  - role: common
-  - role: distribute-artifacts
+  - role: kubelet
   - role: etcd

@@ -16,11 +16,11 @@
 - name: Setup container runtime
   import_playbook: container-runtime.yml
 
-- name: Setup control plane
-  import_playbook: control-plane.yml
-
 - name: Setup kubelet
   import_playbook: kubelet.yml
+
+- name: Setup control plane
+  import_playbook: control-plane.yml
 
 - name: Bootstrap cluster
   import_playbook: bootstrap.yml
