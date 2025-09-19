@@ -2,5 +2,5 @@
   hosts: jumpboxes
   become: yes
   roles:
-    - certificates-generate
+    - generate-artifacts
   tags: generate-certs

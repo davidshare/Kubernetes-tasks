@@ -4,4 +4,4 @@
   gather_facts: yes
   tags: jumpbox
   roles:
-    - jumpbox
+    - jumpbox-setup

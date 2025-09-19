@@ -1,5 +1,5 @@
-- name: Distribute certificates to all nodes
+- name: Distribute certificates and binaries to all nodes
   hosts: all:!jumpboxes
   become: yes
   roles:
-    - certificates-artifacts
+    - distribute-artifacts

@@ -1,5 +1,5 @@
-- name: Distribute certificates to all nodes
-  hosts: all:!jumpboxes
+- name: Download binaries and configs
+  hosts: jumpboxes
   become: yes
   roles:
-    - distribute-artifacts
+    - download-artifacts
