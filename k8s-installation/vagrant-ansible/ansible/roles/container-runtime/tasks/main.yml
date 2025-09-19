@@ -1,2 +1,62 @@
-- name: Configure containerd
-  include_tasks: configure_containerd.yml
+---
+- name: Ensure containerd config directory exists
+  file:
+    path: /etc/containerd
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: yes
+  when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+  tags: container-runtime
+
+- name: Generate containerd configuration
+  template:
+    src: config.toml.j2
+    dest: /etc/containerd/config.toml
+    owner: root
+    group: root
+    mode: "0644"
+  become: yes
+  when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+  notify: Restart containerd
+  tags: container-runtime
+
+- name: Ensure CNI configuration directory exists
+  file:
+    path: /etc/cni/net.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: yes
+  when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+  tags: container-runtime
+
+- name: Deploy containerd systemd service
+  template:
+    src: containerd.service.j2
+    dest: /etc/systemd/system/containerd.service
+    owner: root
+    group: root
+    mode: "0644"
+  become: yes
+  when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+  notify: Restart containerd
+  tags: container-runtime
+
+- name: Reload systemd daemon
+  systemd:
+    daemon_reload: yes
+  become: yes
+  when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+  tags: container-runtime
+
+- name: Enable and start containerd service
+  systemd:
+    name: containerd
+    state: started
+    enabled: yes
+  become: yes
+  when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+  tags: container-runtime

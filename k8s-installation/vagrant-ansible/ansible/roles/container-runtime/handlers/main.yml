@@ -1,4 +1,7 @@
 - name: Restart containerd
-  ansible.builtin.systemd:
+  systemd:
     name: containerd
     state: restarted
+  become: yes
+  when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+  tags: container-runtime

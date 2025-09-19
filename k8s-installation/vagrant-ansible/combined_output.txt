@@ -319,6 +319,7 @@ versions:
   etcd: "3.6.4"
   containerd: "2.1.4"
   runc: "1.3.1"
+  libseccomp2: "2.5.3-2ubuntu3~22.04.1"
   flannel: "master"
   calico: "3.27.3"
 download_urls:
@@ -336,6 +337,8 @@ download_urls:
     tarball: "https://github.com/containerd/containerd/releases/download/v{{ versions.containerd }}/containerd-{{ versions.containerd }}-linux-amd64.tar.gz"
   runc:
     binary: "https://github.com/opencontainers/runc/releases/download/v{{ versions.runc }}/runc.amd64"
+  libseccomp2:
+    deb: "http://archive.ubuntu.com/ubuntu/pool/main/libs/libseccomp/libseccomp2_{{ versions.libseccomp2 }}_amd64.deb"
   manifests:
     flannel: "https://raw.githubusercontent.com/flannel-io/flannel/{{ versions.flannel }}/Documentation/kube-flannel.yml"
     calico: "https://raw.githubusercontent.com/projectcalico/calico/v{{ versions.calico }}/manifests/calico.yaml"
@@ -484,8 +487,10 @@ ansible_ssh_common_args='-o StrictHostKeyChecking=no'
 === ./ansible/playbooks/prerequisites.yml ===
 
 - name: Apply prerequisites to all nodes
-  hosts: masters:workers
+  hosts: masters:workers:jumpboxes
   become: yes
+  gather_facts: yes
+  tags: prereqs
   roles:
     - common
 
@@ -1129,19 +1134,7 @@ dependencies: []
 
 === ./ansible/roles/common/defaults/main.yml ===
 
-# Common packages to install
-common_packages:
-  - curl
-  - apt-transport-https
-  - ca-certificates
-
-# Firewall ports to allow
-common_firewall_ports:
-  - 22/tcp # SSH
-  - "{{ api_server_port }}/tcp" # Kubernetes API server
-  - 2379/tcp # etcd client
-  - 2380/tcp # etcd peer
-  - 8472/udp # Flannel VXLAN
+ufw_enabled: true
 
 
 === ./ansible/roles/common/templates/limits.conf.j2 ===
@@ -1168,94 +1161,99 @@ net.bridge.bridge-nf-call-ip6tables = 1
 dependencies: []
 
 
-=== ./ansible/roles/common/handlers/main.yml ===
-
-- name: Reload sysctl
-  ansible.builtin.command:
-    cmd: sysctl --system
-  changed_when: true
-
-- name: Restart chrony
-  ansible.builtin.systemd:
-    name: chrony
-    state: restarted
-
-
-=== ./ansible/roles/common/tasks/configure_firewall.yml ===
-
-- name: Install ufw
-  ansible.builtin.apt:
-    name: ufw
-    state: present
-
-- name: Allow necessary ports
-  ansible.builtin.ufw:
-    rule: allow
-    port: "{{ item.split('/')[0] }}"
-    proto: "{{ item.split('/')[1] if '/' in item else 'tcp' }}"
-  loop: "{{ common_firewall_ports + (cni_extra_ports[cni_plugin] if cni_plugin in cni_extra_ports else []) }}"
-
-- name: Enable ufw
-  ansible.builtin.ufw:
-    state: enabled
-    policy: deny
-
-
-=== ./ansible/roles/common/tasks/setup_prerequisites.yml ===
-
-
-- name: Install common packages
-  ansible.builtin.apt:
-    name: "{{ common_packages }}"
-    state: present
-    update_cache: yes
-
-- name: Ensure sysctl.conf template is applied
-  ansible.builtin.template:
-    src: sysctl.conf.j2
-    dest: /etc/sysctl.conf
-    owner: root
-    group: root
-    mode: '0644'
-  notify: Reload sysctl
-
-- name: Ensure limits.conf template is applied
-  ansible.builtin.template:
-    src: limits.conf.j2
-    dest: /etc/security/limits.conf
-    owner: root
-    group: root
-    mode: '0644'
-
-- name: Ensure swap is disabled
-  ansible.builtin.command:
-    cmd: swapoff -a
-  changed_when: false
-
-- name: Comment out swap entries in fstab
-  ansible.builtin.replace:
-    path: /etc/fstab
-    regexp: '^([^#].*?\sswap\s+.*)$'
-    replace: '# \1'
-
-- name: Ensure chrony is installed
-  ansible.builtin.apt:
-    name: "{{ ntp_package }}"
-    state: present
-
-- name: Ensure chrony is enabled and started
-  ansible.builtin.systemd:
-    name: chrony
-    enabled: yes
-    state: started
-
 === ./ansible/roles/common/tasks/main.yml ===
 
-- name: Setup system prerequisites
-  include_tasks: setup_prerequisites.yml
+- name: Add host entries
+  lineinfile:
+    path: /etc/hosts
+    line: "{{ item }}"
+    state: present
+    regexp: "^{{ item | regex_escape() }}$"
+  loop:
+    - "# Kubernetes cluster nodes"
+    - "192.168.56.40 jumpbox"
+    - "192.168.56.11 master1"
+    - "192.168.56.21 worker1"
+    - "192.168.56.22 worker2"
+  become: yes
+  tags: prereqs
 
-- name: Configure firewall
-  include_tasks: configure_firewall.yml
+- name: Disable swap
+  command: swapoff -a
+  changed_when: false
+  become: yes
+  tags: prereqs
+
+- name: Comment out swap in fstab
+  lineinfile:
+    path: /etc/fstab
+    regexp: "^([^#].*swap.*)$"
+    line: '# \1'
+    backrefs: yes
+    state: present
+  become: yes
+  tags: prereqs
+
+- name: Install common packages
+  apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - chrony
+      - curl
+      - wget
+      - git
+      - net-tools
+    state: present
+    update_cache: yes
+  become: yes
+  tags: prereqs
+
+- name: Enable and start chrony
+  service:
+    name: chrony
+    state: started
+    enabled: yes
+  become: yes
+  tags: prereqs
+
+- name: Load kernel modules for Kubernetes
+  modprobe:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - br_netfilter
+    - overlay
+  become: yes
+  tags: prereqs
+
+- name: Configure sysctl for bridge calls
+  sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+    sysctl_set: yes
+    reload: yes
+  loop:
+    - {name: "net.bridge.bridge-nf-call-iptables", value: "1"}
+    - {name: "net.bridge.bridge-nf-call-ip6tables", value: "1"}
+  become: yes
+  tags: prereqs
+
+- name: Configure UFW firewall rules
+  ufw:
+    rule: allow
+    port: "{{ item | regex_replace('/.*', '') }}"
+    proto: "{{ item | regex_replace('.*/', '') | default('tcp') }}"
+  loop: "{{ common_firewall_ports + cni_extra_ports[cni_plugin] }}"
+  become: yes
+  tags: prereqs
+
+- name: Enable UFW
+  ufw:
+    state: enabled
+  become: yes
+  tags: prereqs
 
 
 === ./ansible/roles/container-runtime/defaults/main.yml ===
@@ -2466,6 +2464,9 @@ galaxy_info:
 - name: Distribute binaries
   include_tasks: distribute-binaries.yml
 
+- name: Distribute libseccomp2 package
+  include: distribute-libseccomp2.yml
+
 - name: Distribute certificates
   include_tasks: distribute-certs.yml
 
@@ -2529,6 +2530,39 @@ galaxy_info:
   when: inventory_hostname in groups['workers']
   retries: "{{ distribute_retries }}"
   delegate_to: localhost
+
+
+=== ./ansible/roles/distribute-artifacts/tasks/distribute-libseccomp2.yml ===
+
+- name: Distribute libseccomp2 deb package to nodes
+  synchronize:
+    src: "{{ paths.artifacts.base }}/packages/libseccomp2_{{ versions.libseccomp2 }}_amd64.deb"
+    dest: "/tmp/libseccomp2_{{ versions.libseccomp2 }}_amd64.deb"
+    mode: push
+    rsync_opts:
+      - "--chmod=0644"
+      - "--owner=root"
+      - "--group=root"
+  delegate_to: jumpbox
+  when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+  retries: "{{ distribute_retries }}"
+  tags: [artifacts, libseccomp2]
+
+- name: Install libseccomp2 deb package
+  apt:
+    deb: "/tmp/libseccomp2_{{ versions.libseccomp2 }}_amd64.deb"
+    state: present
+  become: yes
+  when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+  tags: [artifacts, libseccomp2]
+
+- name: Remove temporary libseccomp2 deb package
+  file:
+    path: "/tmp/libseccomp2_{{ versions.libseccomp2 }}_amd64.deb"
+    state: absent
+  become: yes
+  when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+  tags: [artifacts, libseccomp2]
 
 
 === ./ansible/roles/distribute-artifacts/tasks/distribute-binaries.yml ===
@@ -2669,119 +2703,44 @@ download_retries: 3
 dependencies: []
 
 
-=== ./ansible/roles/download-artifacts/tasks/main.yml ===
+=== ./ansible/roles/download-artifacts/tasks/download-containerd.yml ===
 
-- name: Setup artifact directories
-  include: directory_setup.yml
-
-- name: Download kubernetes binaries
-  include: kubernetes_binaries.yml
-
-- name: Download containerd binaries
-  include: containerd_binaries.yml
-
-- name: Download etcd binaries
-  include: etcd_binaries.yml
-
-- name: Download runc binaries
-  include: runc_binaries.yml
-
-- name: Download flannel and calico yaml files
-  include: flannel_and_calico.yml
-
-- name: Cleanup unncessary files
-  include: cleanup.yml
-
-
-=== ./ansible/roles/download-artifacts/tasks/cleanup.yml ===
-
-- name: Clean up containerd unnecessary directories
-  ansible.builtin.file:
-    path: "{{ paths.artifacts.binaries }}/bin"
-    state: absent
-  when: inventory_hostname == 'jumpbox'
-  delegate_to: localhost
-
-- name: Clean up containerd unnecessary files
-  ansible.builtin.file:
-    path: "{{ paths.artifacts.binaries }}/containerd-stress"
-    state: absent
-  when: inventory_hostname == 'jumpbox'
-  delegate_to: localhost
-
-- name: Clean up etcd unnecessary directories
-  ansible.builtin.file:
-    path: "{{ paths.artifacts.binaries }}/etcd-v{{ versions.etcd }}-linux-amd64"
-    state: absent
-  when: inventory_hostname == 'jumpbox'
-  delegate_to: localhost
-
-- name: Clean up etcd unnecessary files
-  ansible.builtin.file:
-    path: "{{ paths.artifacts.binaries }}/{{ item }}"
-    state: absent
-  loop:
-    - README-etcdctl.md
-    - README-etcdutl.md
-    - README.md
-    - READMEv2-etcdctl.md
-    - etcdutl
-  when: inventory_hostname == 'jumpbox'
-  delegate_to: localhost
-
-
-=== ./ansible/roles/download-artifacts/tasks/flannel_and_calico.yml ===
-
-- name: Download Flannel manifest
+- name: Download containerd tarball with checksum
   get_url:
-    url: "{{ download_urls.manifests.flannel }}"
-    dest: "{{ paths.artifacts.manifests }}/kube-flannel.yml"
+    url: "{{ download_urls.containerd.tarball }}"
+    dest: "{{ paths.artifacts.binaries }}/containerd-{{ versions.containerd }}-linux-amd64.tar.gz"
     mode: "0644"
-    owner: vagrant
-    group: vagrant
+    checksum: "{{ checksums.containerd.tarball }}"
     timeout: "{{ download_timeout }}"
   retries: "{{ download_retries }}"
   delegate_to: localhost
 
-- name: Download Calico manifest
-  get_url:
-    url: "{{ download_urls.manifests.calico }}"
-    dest: "{{ paths.artifacts.manifests }}/calico.yaml"
-    mode: "0644"
-    owner: vagrant
-    group: vagrant
-    timeout: "{{ download_timeout }}"
-  retries: "{{ download_retries }}"
+- name: Extract containerd tarball
+  unarchive:
+    src: "{{ paths.artifacts.binaries }}/containerd-{{ versions.containerd }}-linux-amd64.tar.gz"
+    dest: "{{ paths.artifacts.binaries }}"
+    remote_src: yes
+    creates: "{{ paths.artifacts.binaries }}/bin/containerd"
   delegate_to: localhost
 
-
-=== ./ansible/roles/download-artifacts/tasks/directory_setup.yml ===
-
-- name: Ensure artifacts base directory exists
-  file:
-    path: "{{ paths.artifacts.base }}"
-    state: directory
+- name: Move containerd binaries and set permissions
+  copy:
+    src: "{{ paths.artifacts.binaries }}/bin/{{ item }}"
+    dest: "{{ paths.artifacts.binaries }}/{{ item }}"
+    remote_src: yes
+    mode: "0755"
     owner: vagrant
     group: vagrant
-    mode: "0755"
-  delegate_to: localhost
-
-- name: Create artifacts subdirectories
-  file:
-    path: "{{ item }}"
-    state: directory
-    owner: vagrant
-    group: vagrant
-    mode: "0755"
   loop:
-    - "{{ paths.artifacts.binaries }}"
-    - "{{ paths.artifacts.certs }}"
-    - "{{ paths.artifacts.kubeconfigs }}"
-    - "{{ paths.artifacts.manifests }}"
+    - containerd
+    - containerd-shim
+    - containerd-shim-runc-v1
+    - containerd-shim-runc-v2
+    - ctr
   delegate_to: localhost
 
 
-=== ./ansible/roles/download-artifacts/tasks/kubernetes_binaries.yml ===
+=== ./ansible/roles/download-artifacts/tasks/download-kubernetes.yml ===
 
 - name: Download Kubernetes binaries with checksums
   get_url:
@@ -2827,7 +2786,34 @@ dependencies: []
   delegate_to: localhost
 
 
-=== ./ansible/roles/download-artifacts/tasks/etcd_binaries.yml ===
+=== ./ansible/roles/download-artifacts/tasks/main.yml ===
+
+- name: Setup artifact directories
+  include: directory-setup.yml
+
+- name: Download kubernetes binaries
+  include: download-kubernetes.yml
+
+- name: Download containerd binaries
+  include: download-containerd.yml
+
+- name: Download etcd binaries
+  include: download-etcd.yml
+
+- name: Download runc binaries
+  include: download-runc.yml
+
+- name: Download libseccomp2 package
+  include: download-libseccomp2.yml
+
+- name: Download flannel and calico yaml files
+  include: download-flannel-and-calico.yml
+
+- name: Cleanup unncessary files
+  include: cleanup.yml
+
+
+=== ./ansible/roles/download-artifacts/tasks/download-etcd.yml ===
 
 - name: Download etcd tarball with checksum
   get_url:
@@ -2861,44 +2847,121 @@ dependencies: []
   delegate_to: localhost
 
 
-=== ./ansible/roles/download-artifacts/tasks/containerd_binaries.yml ===
+=== ./ansible/roles/download-artifacts/tasks/cleanup.yml ===
 
-- name: Download containerd tarball with checksum
+- name: Clean up containerd unnecessary directories
+  ansible.builtin.file:
+    path: "{{ paths.artifacts.binaries }}/bin"
+    state: absent
+  when: inventory_hostname == 'jumpbox'
+  delegate_to: localhost
+
+- name: Clean up containerd unnecessary files
+  ansible.builtin.file:
+    path: "{{ paths.artifacts.binaries }}/containerd-stress"
+    state: absent
+  when: inventory_hostname == 'jumpbox'
+  delegate_to: localhost
+
+- name: Clean up etcd unnecessary directories
+  ansible.builtin.file:
+    path: "{{ paths.artifacts.binaries }}/etcd-v{{ versions.etcd }}-linux-amd64"
+    state: absent
+  when: inventory_hostname == 'jumpbox'
+  delegate_to: localhost
+
+- name: Clean up etcd unnecessary files
+  ansible.builtin.file:
+    path: "{{ paths.artifacts.binaries }}/{{ item }}"
+    state: absent
+  loop:
+    - README-etcdctl.md
+    - README-etcdutl.md
+    - README.md
+    - READMEv2-etcdctl.md
+    - etcdutl
+  when: inventory_hostname == 'jumpbox'
+  delegate_to: localhost
+
+
+=== ./ansible/roles/download-artifacts/tasks/download-flannel-and-calico.yml ===
+
+- name: Download Flannel manifest
   get_url:
-    url: "{{ download_urls.containerd.tarball }}"
-    dest: "{{ paths.artifacts.binaries }}/containerd-{{ versions.containerd }}-linux-amd64.tar.gz"
+    url: "{{ download_urls.manifests.flannel }}"
+    dest: "{{ paths.artifacts.manifests }}/kube-flannel.yml"
     mode: "0644"
-    checksum: "{{ checksums.containerd.tarball }}"
+    owner: vagrant
+    group: vagrant
     timeout: "{{ download_timeout }}"
   retries: "{{ download_retries }}"
   delegate_to: localhost
 
-- name: Extract containerd tarball
-  unarchive:
-    src: "{{ paths.artifacts.binaries }}/containerd-{{ versions.containerd }}-linux-amd64.tar.gz"
-    dest: "{{ paths.artifacts.binaries }}"
-    remote_src: yes
-    creates: "{{ paths.artifacts.binaries }}/bin/containerd"
-  delegate_to: localhost
-
-- name: Move containerd binaries and set permissions
-  copy:
-    src: "{{ paths.artifacts.binaries }}/bin/{{ item }}"
-    dest: "{{ paths.artifacts.binaries }}/{{ item }}"
-    remote_src: yes
-    mode: "0755"
+- name: Download Calico manifest
+  get_url:
+    url: "{{ download_urls.manifests.calico }}"
+    dest: "{{ paths.artifacts.manifests }}/calico.yaml"
+    mode: "0644"
     owner: vagrant
     group: vagrant
-  loop:
-    - containerd
-    - containerd-shim
-    - containerd-shim-runc-v1
-    - containerd-shim-runc-v2
-    - ctr
+    timeout: "{{ download_timeout }}"
+  retries: "{{ download_retries }}"
   delegate_to: localhost
 
 
-=== ./ansible/roles/download-artifacts/tasks/runc_binaries.yml ===
+=== ./ansible/roles/download-artifacts/tasks/directory-setup.yml ===
+
+- name: Ensure artifacts base directory exists
+  file:
+    path: "{{ paths.artifacts.base }}"
+    state: directory
+    owner: vagrant
+    group: vagrant
+    mode: "0755"
+  delegate_to: localhost
+
+- name: Create artifacts subdirectories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: vagrant
+    group: vagrant
+    mode: "0755"
+  loop:
+    - "{{ paths.artifacts.binaries }}"
+    - "{{ paths.artifacts.certs }}"
+    - "{{ paths.artifacts.kubeconfigs }}"
+    - "{{ paths.artifacts.manifests }}"
+  delegate_to: localhost
+
+
+=== ./ansible/roles/download-artifacts/tasks/download-libseccomp2.yml ===
+
+- name: Ensure packages directory exists
+  file:
+    path: "{{ paths.artifacts.base }}/packages"
+    state: directory
+    owner: vagrant
+    group: vagrant
+    mode: "0755"
+  delegate_to: localhost
+  tags: [artifacts, libseccomp2]
+
+- name: Download libseccomp2 deb package
+  get_url:
+    url: "{{ download_urls.libseccomp2 }}"
+    dest: "{{ paths.artifacts.base }}/packages/libseccomp2_{{ versions.libseccomp2 }}_amd64.deb"
+    mode: "0644"
+    owner: vagrant
+    group: vagrant
+    checksum: "{{ checksums.libseccomp2 }}"
+    timeout: "{{ download_timeout }}"
+  retries: "{{ download_retries }}"
+  delegate_to: localhost
+  tags: [artifacts, libseccomp2]
+
+
+=== ./ansible/roles/download-artifacts/tasks/download-runc.yml ===
 
 - name: Download runc with checksum
   get_url:

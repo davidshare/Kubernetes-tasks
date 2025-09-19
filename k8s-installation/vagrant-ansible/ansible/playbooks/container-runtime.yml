@@ -1,5 +1,7 @@
-- name: Configure container runtime
+- name: Configure container runtime on masters and workers
   hosts: masters:workers
   become: yes
+  gather_facts: yes
+  tags: container-runtime
   roles:
     - container-runtime
