@@ -1,15 +1,14 @@
 # Kubelet settings
 kubelet_cert_file: "{{ inventory_hostname }}.pem"
-kubelet_key_file: "{{ inventory_hostname }}-key.pem"
-kube_proxy_cert_file: kube-proxy.pem
-kube_proxy_key_file: kube-proxy-key.pem
+kubelet_key_file: "kubelet-key.pem"
+kube_proxy_cert_file: "kube-proxy.pem"
+kube_proxy_key_file: "kube-proxy-key.pem"
 
 kubelet_args:
-  - --config={{ config_dir }}/kubelet-config.yaml
-  - --kubeconfig={{ config_dir }}/kubelet.kubeconfig
-  - --tls-cert-file={{ pki_dir }}/{{ kubelet_cert_file }}
-  - --tls-private-key-file={{ pki_dir }}/{{ kubelet_key_file }}
+  - --config={{ kubernetes.config_dir }}/kubelet-config.yaml
+  - --kubeconfig={{ kubernetes.config_dir }}/kubelet.kubeconfig
+  - --tls-cert-file={{ kubernetes.pki_dir }}/{{ kubelet_cert_file }}
+  - --tls-private-key-file={{ kubernetes.pki_dir }}/{{ kubelet_key_file }}
 
-# Kube-proxy settings
 kube_proxy_args:
-  - --config={{ config_dir }}/kube-proxy-config.yaml
+  - --config={{ kubernetes.config_dir }}/kube-proxy-config.yaml

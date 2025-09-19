@@ -1,7 +1,5 @@
 node_name: master1
-api_server_endpoint: https://192.168.56.11:6443
-
-# Control plane kubeconfig paths
-kube_apiserver_kubeconfig: "{{ config_dir }}/kube-apiserver.kubeconfig"
-kube_controller_manager_kubeconfig: "{{ config_dir }}/kube-controller-manager.kubeconfig"
-kube_scheduler_kubeconfig: "{{ config_dir }}/kube-scheduler.kubeconfig"
+api_server_endpoint: https://{{ kubernetes_public_address }}:6443
+kube_apiserver_kubeconfig: "{{ kubernetes.config_dir }}/kube-apiserver.kubeconfig"
+kube_controller_manager_kubeconfig: "{{ kubernetes.config_dir }}/kube-controller-manager.kubeconfig"
+kube_scheduler_kubeconfig: "{{ kubernetes.config_dir }}/kube-scheduler.kubeconfig"

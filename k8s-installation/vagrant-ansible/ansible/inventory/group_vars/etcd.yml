@@ -1,16 +1,17 @@
 etcd_args:
   - --name={{ inventory_hostname }}
-  - --data-dir={{ etcd_data_dir }}
+  - --data-dir={{ etcd.data_dir }}
   - --client-cert-auth=true
-  - --cert-file={{ etcd_cert_dir }}/etcd-server.pem
-  - --key-file={{ etcd_cert_dir }}/etcd-server-key.pem
-  - --trusted-ca-file={{ pki_dir }}/ca.pem
-  - --peer-cert-file={{ etcd_cert_dir }}/etcd-server.pem
-  - --peer-key-file={{ etcd_cert_dir }}/etcd-server-key.pem
-  - --peer-trusted-ca-file={{ pki_dir }}/ca.pem
-  - --initial-cluster=master1=https://192.168.56.11:2380
+  - --cert-file={{ etcd.cert_dir }}/etcd-server.pem
+  - --key-file={{ etcd.cert_dir }}/etcd-server-key.pem
+  - --trusted-ca-file={{ kubernetes.pki_dir }}/ca.pem
+  - --peer-cert-file={{ etcd.cert_dir }}/etcd-server.pem
+  - --peer-key-file={{ etcd.cert_dir }}/etcd-server-key.pem
+  - --peer-trusted-ca-file={{ kubernetes.pki_dir }}/ca.pem
+  - --initial-cluster={{ etcd_initial_cluster }}
   - --initial-cluster-state=new
   - --listen-client-urls=https://0.0.0.0:2379
   - --advertise-client-urls=https://{{ kubernetes_public_address }}:2379
   - --listen-peer-urls=https://0.0.0.0:2380
   - --initial-advertise-peer-urls=https://{{ kubernetes_public_address }}:2380
+etcd_initial_cluster: "{{ groups.etcd | map('regex_replace', '^(.*)$', '\\1=https://' ~ hostvars[item].ansible_host ~ ':2380') | join(',') }}"

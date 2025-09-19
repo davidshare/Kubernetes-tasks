@@ -24,3 +24,30 @@ kube_controller_manager_args:
 kube_scheduler_args:
   - --authentication-kubeconfig={{ config_dir }}/kube-scheduler.kubeconfig
   - --authorization-kubeconfig={{ config_dir }}/kube-scheduler.kubeconfig
+
+
+
+# Control plane settings
+kube_apiserver_bind_address: 0.0.0.0
+kube_apiserver_port: "{{ api_server_port }}"
+kube_apiserver_args:
+  - --etcd-servers=https://{{ kubernetes_public_address }}:2379
+  - --etcd-cafile={{ kubernetes.pki_dir }}/ca.pem
+  - --etcd-certfile={{ kubernetes.pki_dir }}/apiserver-etcd-client.pem
+  - --etcd-keyfile={{ kubernetes.pki_dir }}/apiserver-etcd-client-key.pem
+  - --client-ca-file={{ kubernetes.pki_dir }}/ca.pem
+  - --service-account-key-file={{ kubernetes.pki_dir }}/sa.pub
+  - --service-account-signing-key-file={{ kubernetes.pki_dir }}/sa-key.pem
+  - --service-account-issuer=https://kubernetes.default.svc.cluster.local
+  - --tls-cert-file={{ kubernetes.pki_dir }}/apiserver.pem
+  - --tls-private-key-file={{ kubernetes.pki_dir }}/apiserver-key.pem
+  - --service-cluster-ip-range={{ service_cidr }}
+  - --encryption-provider-config={{ kubernetes.config_dir }}/encryption-config.yaml
+kube_controller_manager_args:
+  - --cluster-signing-cert-file={{ kubernetes.pki_dir }}/ca.pem
+  - --cluster-signing-key-file={{ kubernetes.pki_dir }}/ca-key.pem
+  - --service-account-private-key-file={{ kubernetes.pki_dir }}/sa-key.pem
+  - --root-ca-file={{ kubernetes.pki_dir }}/ca.pem
+kube_scheduler_args:
+  - --authentication-kubeconfig={{ kubernetes.config_dir }}/kube-scheduler.kubeconfig
+  - --authorization-kubeconfig={{ kubernetes.config_dir }}/kube-scheduler.kubeconfig
