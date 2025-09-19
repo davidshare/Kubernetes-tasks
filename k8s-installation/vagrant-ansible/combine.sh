@@ -42,7 +42,7 @@ export -f process_file
 
 # Build find command with exclusions
 find "$DIRECTORY" \
-  -type d \( -name '.vscode' -o -name '.vagrant' -o -name '.qodo' -o -name 'files' \) -prune -o \
+  -type d \( -name '.vscode' -o -name '.vagrant' -o -name '.qodo' -o -name 'artifacts' -o -name 'files' \) -prune -o \
   -type f \
   ! -name "$OUTPUT_FILE" \
   ! -name "ansible-tree.md" \
