@@ -28,11 +28,6 @@ containerd_binary: "{{ paths.artifacts.binaries }}/containerd"
 kubectl_binary: "{{ paths.artifacts.binaries }}/kubectl"
 flannel_manifest: "{{ paths.artifacts.manifests }}/kube-flannel.yml"
 
-# Kubernetes versions and settings
-kubernetes_version: 1.34.1
-etcd_version: 3.6.0
-containerd_version: 2.0.0
-
 # Kubernetes API server addresses
 kubernetes_public_address: "{{ network.masters[0].ip }}"
 kubernetes_internal_address: 10.32.0.1
@@ -92,3 +87,48 @@ paths:
   etcd:
     cert_dir: "{{ certificate_dirs.etcd }}"
     data_dir: "{{ etcd_data_dir }}"
+
+versions:
+  kubernetes: "1.34.1"
+  etcd: "3.6.4"
+  containerd: "2.1.4"
+  runc: "1.3.1"
+  libseccomp2: "2.5.3-2ubuntu3~22.04.1"
+  flannel: "master"
+  calico: "3.27.3"
+
+download_urls:
+  kubernetes:
+    base: "https://dl.k8s.io/v{{ versions.kubernetes }}/bin/linux/amd64"
+    apiserver: "https://dl.k8s.io/v{{ versions.kubernetes }}/bin/linux/amd64/kube-apiserver"
+    controller_manager: "https://dl.k8s.io/v{{ versions.kubernetes }}/bin/linux/amd64/kube-controller-manager"
+    scheduler: "https://dl.k8s.io/v{{ versions.kubernetes }}/bin/linux/amd64/kube-scheduler"
+    kubelet: "https://dl.k8s.io/v{{ versions.kubernetes }}/bin/linux/amd64/kubelet"
+    kube_proxy: "https://dl.k8s.io/v{{ versions.kubernetes }}/bin/linux/amd64/kube-proxy"
+    kubectl: "https://dl.k8s.io/v{{ versions.kubernetes }}/bin/linux/amd64/kubectl"
+  etcd:
+    tarball: "https://github.com/etcd-io/etcd/releases/download/v{{ versions.etcd }}/etcd-v{{ versions.etcd }}-linux-amd64.tar.gz"
+  containerd:
+    tarball: "https://github.com/containerd/containerd/releases/download/v{{ versions.containerd }}/containerd-{{ versions.containerd }}-linux-amd64.tar.gz"
+  runc:
+    binary: "https://github.com/opencontainers/runc/releases/download/v{{ versions.runc }}/runc.amd64"
+  libseccomp2:
+    deb: "http://archive.ubuntu.com/ubuntu/pool/main/libs/libseccomp/libseccomp2_{{ versions.libseccomp2 }}_amd64.deb"
+  manifests:
+    flannel: "https://raw.githubusercontent.com/flannel-io/flannel/{{ versions.flannel }}/Documentation/kube-flannel.yml"
+    calico: "https://raw.githubusercontent.com/projectcalico/calico/v{{ versions.calico }}/manifests/calico.yaml"
+
+checksums:
+  kubernetes:
+    apiserver: "sha256:a170577ea20f8c37a522114a259c36ec4ed397482d8f282c265248dedf2216c3"
+    controller_manager: "sha256:91b7aa8c599f93515f347d3ee7fb12229a40db0ca02da3e7c5dc96fbca3ad2f3"
+    scheduler: "sha256:460f5bc48ef176c82fea3592f66ba71ae5bda376f93d86f7fe44fc4759ac577b"
+    kubelet: "sha256:5a72c596c253ea0b0e5bcc6f29903fd41d1d542a7cadf3700c165a2a041a8d82"
+    kube_proxy: "sha256:1b1e7d07f45825fc62888913f906bb519d7a08d0323dea94b959579a81d3e139"
+    kubectl: "sha256:7721f265e18709862655affba5343e85e1980639395d5754473dafaadcaa69e3"
+  etcd:
+    tarball: "sha256:4d5f3101daa534e45ccaf3eec8d21c19b7222db377bcfd5e5a9144155238c105"
+  containerd:
+    tarball: "sha256:316d510a0428276d931023f72c09fdff1a6ba81d6cc36f31805fea6a3c88f515"
+  runc:
+    binary: "sha256:53bfce31ca047e537e0767b21c9d529d4b5b3e1cb9c590ca81654f9a5615d80d"

@@ -1,2 +1,2 @@
-# Flannel paths
-cni_manifest: "{{ paths.artifacts.manifests }}/kube-flannel.yml"
+cni_manifest_dest: /etc/kubernetes/{{ cni_plugin }}.yml
+cni_kubeconfig: "{{ config_dir }}/admin.kubeconfig"

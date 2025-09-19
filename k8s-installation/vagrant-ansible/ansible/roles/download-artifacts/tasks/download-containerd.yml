@@ -26,8 +26,6 @@
     group: vagrant
   loop:
     - containerd
-    - containerd-shim
-    - containerd-shim-runc-v1
     - containerd-shim-runc-v2
     - ctr
   delegate_to: localhost

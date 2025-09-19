@@ -10,12 +10,11 @@
 
 - name: Download libseccomp2 deb package
   get_url:
-    url: "{{ download_urls.libseccomp2 }}"
+    url: "{{ download_urls.libseccomp2.deb }}"
     dest: "{{ paths.artifacts.base }}/packages/libseccomp2_{{ versions.libseccomp2 }}_amd64.deb"
     mode: "0644"
     owner: vagrant
     group: vagrant
-    checksum: "{{ checksums.libseccomp2 }}"
     timeout: "{{ download_timeout }}"
   retries: "{{ download_retries }}"
   delegate_to: localhost

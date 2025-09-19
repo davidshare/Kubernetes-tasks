@@ -1,1 +1,8 @@
-dependencies: []
+dependencies:
+  - distribute-artifacts
+  - control-plane
+galaxy_info:
+  role_name: cni
+  author: David Essien
+  description: Deploy CNI plugin (Flannel or Calico) for pod networking
+  license: MIT

@@ -1,5 +1,6 @@
 - name: Download binaries and configs
   hosts: jumpboxes
+  gather_facts: true
   become: yes
   roles:
     - download-artifacts
