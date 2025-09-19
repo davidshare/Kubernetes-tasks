@@ -1,5 +1,7 @@
-- name: Configure Flannel CNI
+- name: Configure CNI
   hosts: masters
   become: yes
+  gather_facts: yes
+  tags: cni
   roles:
     - cni

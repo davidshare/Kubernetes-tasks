@@ -1,16 +1,20 @@
-- name: Copy CNI manifest
-  ansible.builtin.copy:
-    src: "{{ cni_manifest_paths[cni_plugin] }}"
-    dest: "/etc/kubernetes/{{ cni_plugin }}.yml"
+- name: Ensure CNI manifest directory exists
+  ansible.builtin.file:
+    path: /etc/kubernetes
+    state: directory
     owner: root
     group: root
-    mode: "0644"
+    mode: "0755"
+  become: yes
   when: inventory_hostname == 'master1'
+  tags: cni
 
 - name: Apply CNI manifest
   ansible.builtin.command:
-    cmd: "kubectl --kubeconfig={{ config_dir }}/admin.kubeconfig apply -f /etc/kubernetes/{{ cni_plugin }}.yml"
-    creates: /var/run/cni-applied
-  changed_when: true
+    cmd: kubectl --kubeconfig={{ cni_kubeconfig }} apply -f {{ cni_manifest_dest }}
+  register: cni_apply
+  changed_when: "'created' in cni_apply.stdout or 'configured' in cni_apply.stdout"
   when: inventory_hostname == 'master1'
-  notify: Apply CNI
+  environment:
+    KUBECONFIG: "{{ cni_kubeconfig }}"
+  tags: cni
