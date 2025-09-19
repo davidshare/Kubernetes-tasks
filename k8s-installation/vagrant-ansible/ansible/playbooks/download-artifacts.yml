@@ -2,4 +2,4 @@
   hosts: all:!jumpboxes
   become: yes
   roles:
-    - certificates-distribute
+    - distribute-artifacts
