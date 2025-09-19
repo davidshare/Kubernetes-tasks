@@ -1,5 +1,0 @@
-- name: Post-provisioning setup tasks
-  hosts: jumpboxes
-  become: yes
-  roles:
-    - post_setup

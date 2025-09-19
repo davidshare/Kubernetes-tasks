@@ -39,6 +39,3 @@
 
 - name: Jumpbox Setup
   import_playbook: jumpbox_setup.yml
-
-- name: Post-setup configuration
-  import_playbook: post-setup.yml
