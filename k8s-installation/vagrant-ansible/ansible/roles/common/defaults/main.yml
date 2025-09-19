@@ -1,13 +1,1 @@
-# Common packages to install
-common_packages:
-  - curl
-  - apt-transport-https
-  - ca-certificates
-
-# Firewall ports to allow
-common_firewall_ports:
-  - 22/tcp # SSH
-  - "{{ api_server_port }}/tcp" # Kubernetes API server
-  - 2379/tcp # etcd client
-  - 2380/tcp # etcd peer
-  - 8472/udp # Flannel VXLAN
+ufw_enabled: true

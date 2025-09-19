@@ -172,25 +172,31 @@ paths:
     certs: "{{ paths.artifacts.base }}/certs"
     kubeconfigs: "{{ paths.artifacts.base }}/kubeconfigs"
     manifests: "{{ paths.artifacts.base }}/manifests"
+  kubernetes:
+    pki_dir: "{{ pki_dir }}"
+    config_dir: "{{ config_dir }}"
+    manifests_dir: "{{ manifests_dir }}"
+  etcd:
+    cert_dir: "{{ certificate_dirs.etcd }}"
+    data_dir: "{{ etcd_data_dir }}"
 
 
 === ./ansible/inventory/group_vars/workers.yml ===
 
 # Kubelet settings
 kubelet_cert_file: "{{ inventory_hostname }}.pem"
-kubelet_key_file: "{{ inventory_hostname }}-key.pem"
-kube_proxy_cert_file: kube-proxy.pem
-kube_proxy_key_file: kube-proxy-key.pem
+kubelet_key_file: "kubelet-key.pem"
+kube_proxy_cert_file: "kube-proxy.pem"
+kube_proxy_key_file: "kube-proxy-key.pem"
 
 kubelet_args:
-  - --config={{ config_dir }}/kubelet-config.yaml
-  - --kubeconfig={{ config_dir }}/kubelet.kubeconfig
-  - --tls-cert-file={{ pki_dir }}/{{ kubelet_cert_file }}
-  - --tls-private-key-file={{ pki_dir }}/{{ kubelet_key_file }}
+  - --config={{ kubernetes.config_dir }}/kubelet-config.yaml
+  - --kubeconfig={{ kubernetes.config_dir }}/kubelet.kubeconfig
+  - --tls-cert-file={{ kubernetes.pki_dir }}/{{ kubelet_cert_file }}
+  - --tls-private-key-file={{ kubernetes.pki_dir }}/{{ kubelet_key_file }}
 
-# Kube-proxy settings
 kube_proxy_args:
-  - --config={{ config_dir }}/kube-proxy-config.yaml
+  - --config={{ kubernetes.config_dir }}/kube-proxy-config.yaml
 
 
 === ./ansible/inventory/group_vars/all.yml ===
@@ -203,50 +209,50 @@ config_dir: "{{ base_dir }}/configs"
 
 # Certificate destination directories
 certificate_dirs:
-  base_path: "/home/vagrant/k8s-project/ansible/roles/certificates-generate/files"
-  kubernetes: "{{ pki_dir }}" # For cluster-wide certs
-  etcd: /etc/etcd # For etcd-specific certs
-  kubelet: "{{ pki_dir }}" # For kubelet certs (in pki_dir)
-  kube_proxy: "{{ pki_dir }}" # For kube-proxy certs
+  kubernetes: "{{ pki_dir }}"
+  etcd: /etc/etcd
+  kubelet: "{{ pki_dir }}"
+  kube_proxy: "{{ pki_dir }}"
 
-# etcd settings for single-node cluster
+# etcd settings
 etcd_data_dir: /var/lib/etcd
-etcd_cert_dir: "{{ certificate_dirs.etcd }}" # Reference the defined directory
+etcd_cert_dir: "{{ certificate_dirs.etcd }}"
 
-# Binary paths (source from synced ansible/roles/*/files/)
-cfssl_binary: /home/vagrant/k8s-project/ansible/roles/certificates-generate/files/cfssl
-cfssljson_binary: /home/vagrant/k8s-project/ansible/roles/certificates-generate/files/cfssljson
-etcd_binary: /home/vagrant/k8s-project/ansible/roles/etcd/files/etcd
-etcdctl_binary: /home/vagrant/k8s-project/ansible/roles/etcd/files/etcdctl
-kube_apiserver_binary: /home/vagrant/k8s-project/ansible/roles/control-plane/files/kube-apiserver
-kube_controller_manager_binary: /home/vagrant/k8s-project/ansible/roles/control-plane/files/kube-controller-manager
-kube_scheduler_binary: /home/vagrant/k8s-project/ansible/roles/control-plane/files/kube-scheduler
-kubelet_binary: /home/vagrant/k8s-project/ansible/roles/kubelet/files/kubelet
-kube_proxy_binary: /home/vagrant/k8s-project/ansible/roles/kube-proxy/files/kube-proxy
-runc_binary: /home/vagrant/k8s-project/ansible/roles/container-runtime/files/runc
-containerd_binary: /home/vagrant/k8s-project/ansible/roles/container-runtime/files/containerd
-kubectl_binary: /home/vagrant/k8s-project/ansible/roles/networking/files/kubectl
-flannel_manifest: /home/vagrant/k8s-project/ansible/roles/cni/files/kube-flannel.yml
+# Binary paths
+etcd_binary: "{{ paths.artifacts.binaries }}/etcd"
+etcdctl_binary: "{{ paths.artifacts.binaries }}/etcdctl"
+kube_apiserver_binary: "{{ paths.artifacts.binaries }}/kube-apiserver"
+kube_controller_manager_binary: "{{ paths.artifacts.binaries }}/kube-controller-manager"
+kube_scheduler_binary: "{{ paths.artifacts.binaries }}/kube-scheduler"
+kubelet_binary: "{{ paths.artifacts.binaries }}/kubelet"
+kube_proxy_binary: "{{ paths.artifacts.binaries }}/kube-proxy"
+runc_binary: "{{ paths.artifacts.binaries }}/runc"
+containerd_binary: "{{ paths.artifacts.binaries }}/containerd"
+kubectl_binary: "{{ paths.artifacts.binaries }}/kubectl"
+flannel_manifest: "{{ paths.artifacts.manifests }}/kube-flannel.yml"
 
 # Kubernetes versions and settings
 kubernetes_version: 1.34.1
 etcd_version: 3.6.0
 containerd_version: 2.0.0
-cfssl_version: 1.6.5
 
 # Kubernetes API server addresses
-kubernetes_public_address: 192.168.56.11 # master1 IP
-kubernetes_internal_address: 10.32.0.1 # Kubernetes internal IP (usually first IP of service CIDR)
+kubernetes_public_address: "{{ network.masters[0].ip }}"
+kubernetes_internal_address: 10.32.0.1
 
 # Network settings
 service_cidr: 10.96.0.0/12
 api_server_port: 6443
-api_server_endpoint: https://192.168.56.11:6443 # Updated to master1
+api_server_endpoint: https://{{ kubernetes_public_address }}:6443
 cluster_name: kubernetes
 
 # System settings
 swap_enabled: false
 ntp_package: chrony
+
+# Certificate settings
+cert_key_size: 2048
+cert_expiry: "8760h"
 
 ssh_public_key_path: /home/vagrant/k8s-project/.vagrant/machines/jumpbox/virtualbox/private_key.pub
 common_firewall_ports:
@@ -257,8 +263,8 @@ common_firewall_ports:
 
 cni_plugin: flannel
 cni_manifest_paths:
-  flannel: "{{ role_path }}/files/flannel.yml"
-  calico: "{{ role_path }}/files/calico.yaml"
+  flannel: "{{ paths.artifacts.manifests }}/kube-flannel.yml"
+  calico: "{{ paths.artifacts.manifests }}/calico.yaml"
 
 cni_configs:
   flannel:
@@ -282,28 +288,28 @@ cni_extra_ports:
 kube_apiserver_bind_address: 0.0.0.0
 kube_apiserver_port: "{{ api_server_port }}"
 kube_apiserver_args:
-  - --etcd-servers=https://192.168.56.11:2379
-  - --etcd-cafile={{ pki_dir }}/ca.pem
-  - --etcd-certfile={{ pki_dir }}/apiserver-etcd-client.pem
-  - --etcd-keyfile={{ pki_dir }}/apiserver-etcd-client-key.pem
-  - --client-ca-file={{ pki_dir }}/ca.pem
-  - --service-account-key-file={{ pki_dir }}/sa.pub
-  - --service-account-signing-key-file={{ pki_dir }}/sa-key.pem
+  - --etcd-servers=https://{{ kubernetes_public_address }}:2379
+  - --etcd-cafile={{ kubernetes.pki_dir }}/ca.pem
+  - --etcd-certfile={{ kubernetes.pki_dir }}/apiserver-etcd-client.pem
+  - --etcd-keyfile={{ kubernetes.pki_dir }}/apiserver-etcd-client-key.pem
+  - --client-ca-file={{ kubernetes.pki_dir }}/ca.pem
+  - --service-account-key-file={{ kubernetes.pki_dir }}/sa.pub
+  - --service-account-signing-key-file={{ kubernetes.pki_dir }}/sa-key.pem
   - --service-account-issuer=https://kubernetes.default.svc.cluster.local
-  - --tls-cert-file={{ pki_dir }}/apiserver.pem
-  - --tls-private-key-file={{ pki_dir }}/apiserver-key.pem
+  - --tls-cert-file={{ kubernetes.pki_dir }}/apiserver.pem
+  - --tls-private-key-file={{ kubernetes.pki_dir }}/apiserver-key.pem
   - --service-cluster-ip-range={{ service_cidr }}
-  - --encryption-provider-config={{ config_dir }}/encryption-config.yaml
+  - --encryption-provider-config={{ kubernetes.config_dir }}/encryption-config.yaml
 
 kube_controller_manager_args:
-  - --cluster-signing-cert-file={{ pki_dir }}/ca.pem
-  - --cluster-signing-key-file={{ pki_dir }}/ca-key.pem
-  - --service-account-private-key-file={{ pki_dir }}/sa-key.pem
-  - --root-ca-file={{ pki_dir }}/ca.pem
+  - --cluster-signing-cert-file={{ kubernetes.pki_dir }}/ca.pem
+  - --cluster-signing-key-file={{ kubernetes.pki_dir }}/ca-key.pem
+  - --service-account-private-key-file={{ kubernetes.pki_dir }}/sa-key.pem
+  - --root-ca-file={{ kubernetes.pki_dir }}/ca.pem
 
 kube_scheduler_args:
-  - --authentication-kubeconfig={{ config_dir }}/kube-scheduler.kubeconfig
-  - --authorization-kubeconfig={{ config_dir }}/kube-scheduler.kubeconfig
+  - --authentication-kubeconfig={{ kubernetes.config_dir }}/kube-scheduler.kubeconfig
+  - --authorization-kubeconfig={{ kubernetes.config_dir }}/kube-scheduler.kubeconfig
 
 
 === ./ansible/inventory/group_vars/versions.yml ===
@@ -372,47 +378,44 @@ network:
 
 etcd_args:
   - --name={{ inventory_hostname }}
-  - --data-dir={{ etcd_data_dir }}
+  - --data-dir={{ etcd.data_dir }}
   - --client-cert-auth=true
-  - --cert-file={{ etcd_cert_dir }}/etcd-server.pem
-  - --key-file={{ etcd_cert_dir }}/etcd-server-key.pem
-  - --trusted-ca-file={{ pki_dir }}/ca.pem
-  - --peer-cert-file={{ etcd_cert_dir }}/etcd-server.pem
-  - --peer-key-file={{ etcd_cert_dir }}/etcd-server-key.pem
-  - --peer-trusted-ca-file={{ pki_dir }}/ca.pem
-  - --initial-cluster=master1=https://192.168.56.11:2380
+  - --cert-file={{ etcd.cert_dir }}/etcd-server.pem
+  - --key-file={{ etcd.cert_dir }}/etcd-server-key.pem
+  - --trusted-ca-file={{ kubernetes.pki_dir }}/ca.pem
+  - --peer-cert-file={{ etcd.cert_dir }}/etcd-server.pem
+  - --peer-key-file={{ etcd.cert_dir }}/etcd-server-key.pem
+  - --peer-trusted-ca-file={{ kubernetes.pki_dir }}/ca.pem
+  - --initial-cluster={{ etcd_initial_cluster }}
   - --initial-cluster-state=new
   - --listen-client-urls=https://0.0.0.0:2379
   - --advertise-client-urls=https://{{ kubernetes_public_address }}:2379
   - --listen-peer-urls=https://0.0.0.0:2380
   - --initial-advertise-peer-urls=https://{{ kubernetes_public_address }}:2380
+etcd_initial_cluster: "{{ groups.etcd | map('regex_replace', '^(.*)$', '\\1=https://' ~ hostvars[item].ansible_host ~ ':2380') | join(',') }}"
 
 
 === ./ansible/inventory/host_vars/worker1.yml ===
 
-# Worker node-specific settings
 node_name: worker1
-kubelet_kubeconfig: "{{ config_dir }}/kubelet.kubeconfig"
-kube_proxy_kubeconfig: "{{ config_dir }}/kube-proxy.kubeconfig"
+kubelet_kubeconfig: "{{ kubernetes.config_dir }}/kubelet.kubeconfig"
+kube_proxy_kubeconfig: "{{ kubernetes.config_dir }}/kube-proxy.kubeconfig"
 
 
 === ./ansible/inventory/host_vars/worker2.yml ===
 
-# Worker node-specific settings
 node_name: worker2
-kubelet_kubeconfig: "{{ config_dir }}/kubelet.kubeconfig"
-kube_proxy_kubeconfig: "{{ config_dir }}/kube-proxy.kubeconfig"
+kubelet_kubeconfig: "{{ kubernetes.config_dir }}/kubelet.kubeconfig"
+kube_proxy_kubeconfig: "{{ kubernetes.config_dir }}/kube-proxy.kubeconfig"
 
 
 === ./ansible/inventory/host_vars/master1.yml ===
 
 node_name: master1
-api_server_endpoint: https://192.168.56.11:6443
-
-# Control plane kubeconfig paths
-kube_apiserver_kubeconfig: "{{ config_dir }}/kube-apiserver.kubeconfig"
-kube_controller_manager_kubeconfig: "{{ config_dir }}/kube-controller-manager.kubeconfig"
-kube_scheduler_kubeconfig: "{{ config_dir }}/kube-scheduler.kubeconfig"
+api_server_endpoint: https://{{ kubernetes_public_address }}:6443
+kube_apiserver_kubeconfig: "{{ kubernetes.config_dir }}/kube-apiserver.kubeconfig"
+kube_controller_manager_kubeconfig: "{{ kubernetes.config_dir }}/kube-controller-manager.kubeconfig"
+kube_scheduler_kubeconfig: "{{ kubernetes.config_dir }}/kube-scheduler.kubeconfig"
 
 
 === ./ansible/inventory/hosts.ini ===
@@ -433,52 +436,7 @@ jumpbox ansible_host=192.168.56.40 ansible_user=vagrant
 [all:vars]
 ansible_ssh_common_args='-o StrictHostKeyChecking=no'
 
-=== ./ansible/playbooks/04-control-plane.yml ===
-
-- name: Configure Kubernetes control plane
-  hosts: masters
-  become: yes
-  roles:
-    - control-plane
-
-
-=== ./ansible/playbooks/05-container-runtime.yml ===
-
-- name: Configure container runtime
-  hosts: masters:workers
-  become: yes
-  roles:
-    - container-runtime
-
-
-=== ./ansible/playbooks/00-prerequisites.yml ===
-
-- name: Apply prerequisites to all nodes
-  hosts: masters:workers
-  become: yes
-  roles:
-    - common
-
-
-=== ./ansible/playbooks/07-kubelet.yml ===
-
-- name: Configure kubelet
-  hosts: workers
-  become: yes
-  roles:
-    - kubelet
-
-
-=== ./ansible/playbooks/06-bootstrap.yml ===
-
-- name: Configure bootstrap
-  hosts: masters
-  become: yes
-  roles:
-    - bootstrap
-
-
-=== ./ansible/playbooks/08-kube-proxy.yml ===
+=== ./ansible/playbooks/kube-proxy.yml ===
 
 - name: Configure kube-proxy
   hosts: workers
@@ -487,31 +445,49 @@ ansible_ssh_common_args='-o StrictHostKeyChecking=no'
     - kube-proxy
 
 
-=== ./ansible/playbooks/10-networking.yml ===
+=== ./ansible/playbooks/etcd-cluster.yml ===
 
-- name: Deploy CoreDNS
-  hosts: masters
+- name: Configure etcd cluster
+  hosts: etcd
   become: yes
   roles:
-    - networking
+    - etcd
 
 
-=== ./ansible/playbooks/12-post-setup.yml ===
+=== ./ansible/playbooks/hardening.yml ===
 
-- name: Post-provisioning setup tasks
-  hosts: jumpboxes
+- name: Apply security hardening
+  hosts: masters:etcd
   become: yes
   roles:
-    - post_setup
+    - hardening
 
 
-=== ./ansible/playbooks/02-distribute-certificates.yml ===
+=== ./ansible/playbooks/distribute-certificates.yml ===
 
 - name: Distribute certificates to all nodes
   hosts: all:!jumpboxes
   become: yes
   roles:
     - certificates-distribute
+
+
+=== ./ansible/playbooks/control-plane.yml ===
+
+- name: Configure Kubernetes control plane
+  hosts: masters
+  become: yes
+  roles:
+    - control-plane
+
+
+=== ./ansible/playbooks/prerequisites.yml ===
+
+- name: Apply prerequisites to all nodes
+  hosts: masters:workers
+  become: yes
+  roles:
+    - common
 
 
 === ./ansible/playbooks/jumpbox_setup.yml ===
@@ -524,49 +500,16 @@ ansible_ssh_common_args='-o StrictHostKeyChecking=no'
     - jumpbox_setup
 
 
-=== ./ansible/playbooks/cluster.yml ===
+=== ./ansible/playbooks/networking.yml ===
 
-- name: Setup prerequisites
-  import_playbook: 00-prerequisites.yml
-
-- name: Generate certificates
-  import_playbook: 01-generate-certificates.yml
-
-- name: Distribute certificates
-  import_playbook: 02-distribute-certificates.yml
-
-- name: Setup etcd cluster
-  import_playbook: 03-etcd-cluster.yml
-
-- name: Setup control plane
-  import_playbook: 04-control-plane.yml
-
-- name: Setup container runtime
-  import_playbook: 05-container-runtime.yml
-
-- name: Bootstrap cluster
-  import_playbook: 06-bootstrap.yml
-
-- name: Setup kubelet
-  import_playbook: 07-kubelet.yml
-
-- name: Setup kube-proxy
-  import_playbook: 08-kube-proxy.yml
-
-- name: Setup CNI
-  import_playbook: 09-cni.yml
-
-- name: Setup networking
-  import_playbook: 10-networking.yml
-
-- name: Harden cluster
-  import_playbook: 11-hardening.yml
-
-- name: Post-setup configuration
-  import_playbook: 12-post-setup.yml
+- name: Deploy CoreDNS
+  hosts: masters
+  become: yes
+  roles:
+    - networking
 
 
-=== ./ansible/playbooks/09-cni.yml ===
+=== ./ansible/playbooks/cni.yml ===
 
 - name: Configure Flannel CNI
   hosts: masters
@@ -575,7 +518,67 @@ ansible_ssh_common_args='-o StrictHostKeyChecking=no'
     - cni
 
 
-=== ./ansible/playbooks/01-generate-certificates.yml ===
+=== ./ansible/playbooks/post-setup.yml ===
+
+- name: Post-provisioning setup tasks
+  hosts: jumpboxes
+  become: yes
+  roles:
+    - post_setup
+
+
+=== ./ansible/playbooks/cluster.yml ===
+
+- name: Setup prerequisites
+  import_playbook: prerequisites.yml
+
+- name: Generate certificates
+  import_playbook: generate-certificates.yml
+
+- name: Distribute certificates
+  import_playbook: distribute-certificates.yml
+
+- name: Setup etcd cluster
+  import_playbook: etcd-cluster.yml
+
+- name: Setup control plane
+  import_playbook: control-plane.yml
+
+- name: Setup container runtime
+  import_playbook: container-runtime.yml
+
+- name: Bootstrap cluster
+  import_playbook: bootstrap.yml
+
+- name: Setup kubelet
+  import_playbook: kubelet.yml
+
+- name: Setup kube-proxy
+  import_playbook: kube-proxy.yml
+
+- name: Setup CNI
+  import_playbook: cni.yml
+
+- name: Setup networking
+  import_playbook: networking.yml
+
+- name: Harden cluster
+  import_playbook: hardening.yml
+
+- name: Post-setup configuration
+  import_playbook: post-setup.yml
+
+
+=== ./ansible/playbooks/bootstrap.yml ===
+
+- name: Configure bootstrap
+  hosts: masters
+  become: yes
+  roles:
+    - bootstrap
+
+
+=== ./ansible/playbooks/generate-certificates.yml ===
 
 - name: Generate certificates on jumpbox
   hosts: jumpboxes
@@ -585,22 +588,22 @@ ansible_ssh_common_args='-o StrictHostKeyChecking=no'
   tags: generate-certs
 
 
-=== ./ansible/playbooks/03-etcd-cluster.yml ===
+=== ./ansible/playbooks/container-runtime.yml ===
 
-- name: Configure etcd cluster
-  hosts: etcd
+- name: Configure container runtime
+  hosts: masters:workers
   become: yes
   roles:
-    - etcd
+    - container-runtime
 
 
-=== ./ansible/playbooks/11-hardening.yml ===
+=== ./ansible/playbooks/kubelet.yml ===
 
-- name: Apply security hardening
-  hosts: masters:etcd
+- name: Configure kubelet
+  hosts: workers
   become: yes
   roles:
-    - hardening
+    - kubelet
 
 
 === ./ansible/roles/generate-artifacts/defaults/main.yml ===
@@ -1791,8 +1794,7 @@ dependencies: []
 === ./ansible/roles/cni/defaults/main.yml ===
 
 # Flannel paths
-flannel_manifest_dest: "{{ config_dir }}/kube-flannel.yml"
-kubectl_binary: "{{ kubectl_binary }}"
+cni_manifest: "{{ paths.artifacts.manifests }}/kube-flannel.yml"
 
 
 === ./ansible/roles/cni/meta/main.yml ===

@@ -1,5 +1,91 @@
-- name: Setup system prerequisites
-  include_tasks: setup_prerequisites.yml
+- name: Add host entries
+  lineinfile:
+    path: /etc/hosts
+    line: "{{ item }}"
+    state: present
+    regexp: "^{{ item | regex_escape() }}$"
+  loop:
+    - "# Kubernetes cluster nodes"
+    - "192.168.56.40 jumpbox"
+    - "192.168.56.11 master1"
+    - "192.168.56.21 worker1"
+    - "192.168.56.22 worker2"
+  become: yes
+  tags: prereqs
 
-- name: Configure firewall
-  include_tasks: configure_firewall.yml
+- name: Disable swap
+  command: swapoff -a
+  changed_when: false
+  become: yes
+  tags: prereqs
+
+- name: Comment out swap in fstab
+  lineinfile:
+    path: /etc/fstab
+    regexp: "^([^#].*swap.*)$"
+    line: '# \1'
+    backrefs: yes
+    state: present
+  become: yes
+  tags: prereqs
+
+- name: Install common packages
+  apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - chrony
+      - curl
+      - wget
+      - git
+      - net-tools
+    state: present
+    update_cache: yes
+  become: yes
+  tags: prereqs
+
+- name: Enable and start chrony
+  service:
+    name: chrony
+    state: started
+    enabled: yes
+  become: yes
+  tags: prereqs
+
+- name: Load kernel modules for Kubernetes
+  modprobe:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - br_netfilter
+    - overlay
+  become: yes
+  tags: prereqs
+
+- name: Configure sysctl for bridge calls
+  sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+    sysctl_set: yes
+    reload: yes
+  loop:
+    - {name: "net.bridge.bridge-nf-call-iptables", value: "1"}
+    - {name: "net.bridge.bridge-nf-call-ip6tables", value: "1"}
+  become: yes
+  tags: prereqs
+
+- name: Configure UFW firewall rules
+  ufw:
+    rule: allow
+    port: "{{ item | regex_replace('/.*', '') }}"
+    proto: "{{ item | regex_replace('.*/', '') | default('tcp') }}"
+  loop: "{{ common_firewall_ports + cni_extra_ports[cni_plugin] }}"
+  become: yes
+  tags: prereqs
+
+- name: Enable UFW
+  ufw:
+    state: enabled
+  become: yes
+  tags: prereqs

@@ -1,5 +1,7 @@
 - name: Apply prerequisites to all nodes
-  hosts: masters:workers
+  hosts: masters:workers:jumpboxes
   become: yes
+  gather_facts: yes
+  tags: prereqs
   roles:
     - common

@@ -1,0 +1,22 @@
+- name: Ensure packages directory exists
+  file:
+    path: "{{ paths.artifacts.base }}/packages"
+    state: directory
+    owner: vagrant
+    group: vagrant
+    mode: "0755"
+  delegate_to: localhost
+  tags: [artifacts, libseccomp2]
+
+- name: Download libseccomp2 deb package
+  get_url:
+    url: "{{ download_urls.libseccomp2 }}"
+    dest: "{{ paths.artifacts.base }}/packages/libseccomp2_{{ versions.libseccomp2 }}_amd64.deb"
+    mode: "0644"
+    owner: vagrant
+    group: vagrant
+    checksum: "{{ checksums.libseccomp2 }}"
+    timeout: "{{ download_timeout }}"
+  retries: "{{ download_retries }}"
+  delegate_to: localhost
+  tags: [artifacts, libseccomp2]

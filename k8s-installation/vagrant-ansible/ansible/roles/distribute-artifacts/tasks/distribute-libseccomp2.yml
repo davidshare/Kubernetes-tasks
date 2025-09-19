@@ -1,0 +1,29 @@
+- name: Distribute libseccomp2 deb package to nodes
+  synchronize:
+    src: "{{ paths.artifacts.base }}/packages/libseccomp2_{{ versions.libseccomp2 }}_amd64.deb"
+    dest: "/tmp/libseccomp2_{{ versions.libseccomp2 }}_amd64.deb"
+    mode: push
+    rsync_opts:
+      - "--chmod=0644"
+      - "--owner=root"
+      - "--group=root"
+  delegate_to: jumpbox
+  when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+  retries: "{{ distribute_retries }}"
+  tags: [artifacts, libseccomp2]
+
+- name: Install libseccomp2 deb package
+  apt:
+    deb: "/tmp/libseccomp2_{{ versions.libseccomp2 }}_amd64.deb"
+    state: present
+  become: yes
+  when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+  tags: [artifacts, libseccomp2]
+
+- name: Remove temporary libseccomp2 deb package
+  file:
+    path: "/tmp/libseccomp2_{{ versions.libseccomp2 }}_amd64.deb"
+    state: absent
+  become: yes
+  when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+  tags: [artifacts, libseccomp2]

@@ -3,6 +3,7 @@ versions:
   etcd: "3.6.4"
   containerd: "2.1.4"
   runc: "1.3.1"
+  libseccomp2: "2.5.3-2ubuntu3~22.04.1"
   flannel: "master"
   calico: "3.27.3"
 download_urls:
@@ -20,6 +21,8 @@ download_urls:
     tarball: "https://github.com/containerd/containerd/releases/download/v{{ versions.containerd }}/containerd-{{ versions.containerd }}-linux-amd64.tar.gz"
   runc:
     binary: "https://github.com/opencontainers/runc/releases/download/v{{ versions.runc }}/runc.amd64"
+  libseccomp2:
+    deb: "http://archive.ubuntu.com/ubuntu/pool/main/libs/libseccomp/libseccomp2_{{ versions.libseccomp2 }}_amd64.deb"
   manifests:
     flannel: "https://raw.githubusercontent.com/flannel-io/flannel/{{ versions.flannel }}/Documentation/kube-flannel.yml"
     calico: "https://raw.githubusercontent.com/projectcalico/calico/v{{ versions.calico }}/manifests/calico.yaml"

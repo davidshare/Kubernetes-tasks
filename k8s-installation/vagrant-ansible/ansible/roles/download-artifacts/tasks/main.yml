@@ -1,20 +1,23 @@
 - name: Setup artifact directories
-  include: directory_setup.yml
+  include: directory-setup.yml
 
 - name: Download kubernetes binaries
-  include: kubernetes_binaries.yml
+  include: download-kubernetes.yml
 
 - name: Download containerd binaries
-  include: containerd_binaries.yml
+  include: download-containerd.yml
 
 - name: Download etcd binaries
-  include: etcd_binaries.yml
+  include: download-etcd.yml
 
 - name: Download runc binaries
-  include: runc_binaries.yml
+  include: download-runc.yml
+
+- name: Download libseccomp2 package
+  include: download-libseccomp2.yml
 
 - name: Download flannel and calico yaml files
-  include: flannel_and_calico.yml
+  include: download-flannel-and-calico.yml
 
 - name: Cleanup unncessary files
   include: cleanup.yml
