@@ -77,3 +77,18 @@ cni_extra_ports:
   calico:
     - 179/tcp
     - 4789/udp
+
+paths:
+  artifacts:
+    base: "/home/vagrant/k8s-project/ansible/artifacts"
+    binaries: "/home/vagrant/k8s-project/ansible/artifacts/binaries"
+    certs: "/home/vagrant/k8s-project/ansible/artifacts/certs"
+    kubeconfigs: "/home/vagrant/k8s-project/ansible/artifacts/kubeconfigs"
+    manifests: "/home/vagrant/k8s-project/ansible/artifacts/manifests"
+  kubernetes:
+    pki_dir: "{{ pki_dir }}"
+    config_dir: "{{ config_dir }}"
+    manifests_dir: "{{ manifests_dir }}"
+  etcd:
+    cert_dir: "{{ certificate_dirs.etcd }}"
+    data_dir: "{{ etcd_data_dir }}"
