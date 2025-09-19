@@ -1,1 +1,8 @@
-dependencies: []
+dependencies:
+  - distribute-artifacts
+  - control-plane
+galaxy_info:
+  role_name: kube-proxy
+  author: David Essien
+  description: Configure kube-proxy on Kubernetes worker nodes
+  license: MIT

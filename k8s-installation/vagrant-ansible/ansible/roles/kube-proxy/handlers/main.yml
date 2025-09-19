@@ -1,4 +1,8 @@
 - name: Restart kube-proxy
   ansible.builtin.systemd:
-    name: kube-proxy
+    name: kube-proxy.service
     state: restarted
+    daemon_reload: yes
+  become: yes
+  when: inventory_hostname in groups['workers']
+  tags: kube-proxy

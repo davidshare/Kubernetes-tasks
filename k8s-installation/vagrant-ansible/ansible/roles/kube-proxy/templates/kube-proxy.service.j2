@@ -1,12 +1,14 @@
 [Unit]
 Description=Kubernetes Kube-Proxy
-Documentation=https://kubernetes.io/docs/
 After=network.target
 
 [Service]
-ExecStart={{ kube_proxy_binary_dest }} \
-    {% for arg in kube_proxy_args %} {{ arg }} {% endfor %}
-Restart=on-failure
+ExecStart={{ kube_proxy_binary }} \
+    --config=/var/lib/kube-proxy/config.yaml \
+    --kubeconfig={{ kube_proxy_kubeconfig }} \
+    --v={{ kube_proxy_log_level }}
+Restart=always
+RestartSec=5
 LimitNOFILE=65536
 
 [Install]

@@ -1,4 +1,3 @@
-# Bootstrap settings
 bootstrap_token: "{{ lookup('password', '/dev/shm/bootstrap_token chars=ascii_lowercase,digits length=16') }}"
 bootstrap_token_id: "{{ bootstrap_token[:6] }}"
 bootstrap_token_secret: "{{ bootstrap_token[6:] }}"

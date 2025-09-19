@@ -1,5 +1,7 @@
 - name: Configure kube-proxy
   hosts: workers
   become: yes
+  gather_facts: yes
+  tags: kube-proxy
   roles:
     - kube-proxy

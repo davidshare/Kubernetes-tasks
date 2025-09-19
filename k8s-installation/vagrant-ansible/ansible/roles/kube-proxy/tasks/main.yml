@@ -1,2 +1,55 @@
-- name: Configure kube-proxy
-  include_tasks: configure_kube_proxy.yml
+---
+- name: Ensure kube-proxy config directory exists
+  ansible.builtin.file:
+    path: "{{ kube_proxy_config_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: yes
+  when: inventory_hostname in groups['workers']
+  tags: kube-proxy
+
+- name: Ensure kube-proxy var directory exists
+  ansible.builtin.file:
+    path: /var/lib/kube-proxy
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: yes
+  when: inventory_hostname in groups['workers']
+  tags: kube-proxy
+
+- name: Deploy kube-proxy configuration
+  ansible.builtin.template:
+    src: kube-proxy-config.yaml.j2
+    dest: /var/lib/kube-proxy/config.yaml
+    owner: root
+    group: root
+    mode: "0600"
+  become: yes
+  when: inventory_hostname in groups['workers']
+  notify: Restart kube-proxy
+  tags: kube-proxy
+
+- name: Deploy kube-proxy systemd service
+  ansible.builtin.template:
+    src: kube-proxy.service.j2
+    dest: "{{ kube_proxy_service }}"
+    owner: root
+    group: root
+    mode: "0644"
+  become: yes
+  when: inventory_hostname in groups['workers']
+  notify: Restart kube-proxy
+  tags: kube-proxy
+
+- name: Ensure kube-proxy service is enabled and running
+  ansible.builtin.systemd:
+    name: kube-proxy.service
+    state: started
+    enabled: yes
+  become: yes
+  when: inventory_hostname in groups['workers']
+  tags: kube-proxy

@@ -1,2 +1,53 @@
-- name: Configure bootstrap
-  include_tasks: configure_bootstrap.yml
+- name: Ensure Kubernetes config directory exists
+  file:
+    path: "{{ config_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: yes
+  when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+  tags: bootstrap
+
+- name: Check if bootstrap token secret exists
+  ansible.builtin.command:
+    cmd: kubectl --kubeconfig={{ config_dir }}/admin.kubeconfig get secret bootstrap-token-{{ bootstrap_token_id }} -n kube-system
+  register: secret_check
+  failed_when: false
+  changed_when: false
+  when: inventory_hostname in groups['masters']
+  tags: bootstrap
+
+- name: Create bootstrap token secret
+  ansible.builtin.command:
+    cmd: kubectl --kubeconfig={{ config_dir }}/admin.kubeconfig create secret generic bootstrap-token-{{ bootstrap_token_id }} -n kube-system --type=bootstrap.kubernetes.io/token --from-literal=token-id={{ bootstrap_token_id }} --from-literal=token-secret={{ bootstrap_token_secret }} --from-literal=usage-bootstrap-authentication=true --from-literal=usage-bootstrap-signing=true
+  when: inventory_hostname in groups['masters'] and secret_check.rc != 0
+  tags: bootstrap
+
+- name: Generate bootstrap kubeconfig on workers
+  ansible.builtin.template:
+    src: bootstrap.kubeconfig.j2
+    dest: "{{ bootstrap_kubeconfig }}"
+    owner: root
+    group: root
+    mode: "0600"
+  become: yes
+  when: inventory_hostname in groups['workers']
+  tags: bootstrap
+
+- name: Wait for and approve pending CSRs
+  ansible.builtin.shell: |
+    end_time=$(( $(date +%s) + 60 ))
+    while [ $(date +%s) -lt $end_time ]; do
+      if kubectl --kubeconfig={{ config_dir }}/admin.kubeconfig get csr -o name 2>/dev/null | grep -q .; then
+        break
+      fi
+      sleep 2
+    done
+    kubectl --kubeconfig={{ config_dir }}/admin.kubeconfig get csr -o name | xargs -r kubectl --kubeconfig={{ config_dir }}/admin.kubeconfig certificate approve
+  args:
+    executable: /bin/bash
+  changed_when: true
+  when: inventory_hostname in groups['masters']
+  notify: Approve CSRs
+  tags: bootstrap

@@ -1,4 +1,6 @@
 apiVersion: kubeproxy.config.k8s.io/v1alpha1
 kind: KubeProxyConfiguration
+clientConnection:
+  kubeconfig: {{ kube_proxy_kubeconfig }}
 mode: iptables
-clusterCIDR: "{{ pod_network_cidr }}"
+clusterCIDR: {{ cluster_cidr }}
