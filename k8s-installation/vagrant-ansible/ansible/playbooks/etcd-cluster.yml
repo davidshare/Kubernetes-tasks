@@ -1,5 +1,0 @@
-- name: Configure etcd cluster
-  hosts: etcd
-  become: yes
-  roles:
-    - etcd

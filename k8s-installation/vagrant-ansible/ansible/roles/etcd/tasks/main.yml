@@ -1,5 +1,51 @@
-- name: Configure etcd
-  include_tasks: configure.yml
+---
+- name: Ensure etcd certificate directory exists
+  file:
+    path: "{{ etcd_cert_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+  become: yes
+  when: inventory_hostname in groups['masters']
+  tags: etcd
 
-- name: Set up etcd service
-  include_tasks: service.yml
+- name: Ensure etcd data directory exists
+  file:
+    path: "{{ etcd_data_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+  become: yes
+  when: inventory_hostname in groups['masters']
+  tags: etcd
+
+- name: Deploy etcd systemd service
+  template:
+    src: etcd.service.j2
+    dest: /etc/systemd/system/etcd.service
+    owner: root
+    group: root
+    mode: "0644"
+  become: yes
+  when: inventory_hostname in groups['masters']
+  notify: Restart etcd
+  tags: etcd
+
+- name: Reload systemd daemon
+  systemd:
+    daemon_reload: yes
+  become: yes
+  when: inventory_hostname in groups['masters']
+  tags: etcd
+
+- name: Enable and start etcd service
+  systemd:
+    name: etcd
+    state: started
+    enabled: yes
+  become: yes
+  when: inventory_hostname in groups['masters']
+  notify: Restart etcd
+  tags: etcd

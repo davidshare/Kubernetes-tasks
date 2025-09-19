@@ -1,5 +1,3 @@
-# etcd paths
-etcd_binary_dest: /usr/local/bin/etcd
-etcdctl_binary_dest: /usr/local/bin/etcdctl
-etcd_config: /etc/etcd/etcd.conf
-etcd_service: /etc/systemd/system/etcd.service
+etcd_config_dir: /etc/etcd
+etcd_data_dir: "{{ etcd_data_dir }}"
+etcd_cert_dir: "{{ certificate_dirs.etcd }}"

@@ -1,4 +1,7 @@
 - name: Restart etcd
-  ansible.builtin.systemd:
+  systemd:
     name: etcd
     state: restarted
+  become: yes
+  when: inventory_hostname in groups['masters']
+  tags: etcd

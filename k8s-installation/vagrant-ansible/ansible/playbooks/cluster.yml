@@ -8,7 +8,7 @@
   import_playbook: distribute-certificates.yml
 
 - name: Setup etcd cluster
-  import_playbook: etcd-cluster.yml
+  import_playbook: etcd.yml
 
 - name: Setup control plane
   import_playbook: control-plane.yml

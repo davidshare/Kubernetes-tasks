@@ -1,0 +1,7 @@
+- name: Configure etcd on master nodes
+  hosts: masters
+  become: yes
+  gather_facts: yes
+  tags: etcd
+  roles:
+    - etcd

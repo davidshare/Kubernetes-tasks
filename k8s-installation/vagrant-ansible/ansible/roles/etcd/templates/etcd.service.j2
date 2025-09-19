@@ -1,13 +1,27 @@
-[Unit]
-Description=etcd
-Documentation=https://etcd.io/docs/
+[Unit] Description=etcd key-value store 
+Documentation=https://etcd.io 
 After=network.target
 
-[Service]
-EnvironmentFile={{ etcd_config }}
-ExecStart={{ etcd_binary_dest }} $ETCD_ARGS
-Restart=on-failure
+[Service] ExecStart={{ etcd_binary }} 
+--name={{ inventory_hostname }} 
+--data-dir={{ etcd_data_dir }} 
+--client-cert-auth=true 
+--cert-file={{ etcd_cert_dir }}/etcd-server.pem 
+--key-file={{ etcd_cert_dir }}/etcd-server-key.pem 
+--trusted-ca-file={{ kubernetes.pki_dir }}/ca.pem 
+--peer-cert-file={{ etcd_cert_dir }}/etcd-server.pem 
+--peer-key-file={{ etcd_cert_dir }}/etcd-server-key.pem 
+--peer-trusted-ca-file={{ kubernetes.pki_dir }}/ca.pem 
+--initial-cluster={{ etcd_initial_cluster }} 
+--initial-cluster-state=new 
+--listen-client-urls=https://0.0.0.0:2379 
+--advertise-client-urls=https://{{ kubernetes_public_address }}:2379 
+--listen-peer-urls=https://0.0.0.0:2380 
+--initial-advertise-peer-urls=https://{{ kubernetes_public_address }}:2380 
+Restart=always
+RestartSec=5
 LimitNOFILE=65536
+TimeoutStartSec=90
+TimeoutStopSec=90
 
-[Install]
-WantedBy=multi-user.target
+[Install] WantedBy=multi-user.target
