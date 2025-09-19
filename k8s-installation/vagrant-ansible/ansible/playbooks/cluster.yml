@@ -1,26 +1,29 @@
 - name: Setup prerequisites
   import_playbook: prerequisites.yml
 
-- name: Generate certificates
-  import_playbook: generate-certificates.yml
+- name: Download artifacts
+  import_playbook: download-artifacts.yml
 
-- name: Distribute certificates
-  import_playbook: distribute-certificates.yml
+- name: Generate Artifacts
+  import_playbook: generate-artifacts.yml
+
+- name: Distribute artifacts
+  import_playbook: distribute-artifacts.yml
 
 - name: Setup etcd cluster
   import_playbook: etcd.yml
 
-- name: Setup control plane
-  import_playbook: control-plane.yml
-
 - name: Setup container runtime
   import_playbook: container-runtime.yml
 
-- name: Bootstrap cluster
-  import_playbook: bootstrap.yml
+- name: Setup control plane
+  import_playbook: control-plane.yml
 
 - name: Setup kubelet
   import_playbook: kubelet.yml
+
+- name: Bootstrap cluster
+  import_playbook: bootstrap.yml
 
 - name: Setup kube-proxy
   import_playbook: kube-proxy.yml
@@ -33,6 +36,9 @@
 
 - name: Harden cluster
   import_playbook: hardening.yml
+
+- name: Jumpbox Setup
+  import_playbook: jumpbox_setup.yml
 
 - name: Post-setup configuration
   import_playbook: post-setup.yml

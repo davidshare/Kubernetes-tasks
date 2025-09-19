@@ -1,0 +1,5 @@
+- name: Distribute certificates to all nodes
+  hosts: all:!jumpboxes
+  become: yes
+  roles:
+    - certificates-distribute
