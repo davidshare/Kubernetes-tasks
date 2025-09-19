@@ -1,5 +1,7 @@
-- name: Deploy CoreDNS
+- name: Configure DNS
   hosts: masters
   become: yes
+  gather_facts: yes
+  tags: networking
   roles:
     - networking

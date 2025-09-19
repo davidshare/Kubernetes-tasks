@@ -1,1 +1,8 @@
-dependencies: []
+dependencies:
+  - control-plane
+  - cni
+galaxy_info:
+  role_name: networking
+  author: David Essien
+  description: Deploy DNS solution (CoreDNS) for Kubernetes cluster
+  license: MIT

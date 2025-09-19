@@ -1,2 +1,32 @@
-- name: Deploy CoreDNS
-  include_tasks: deploy_coredns.yml
+- name: Ensure DNS manifest directory exists
+  ansible.builtin.file:
+    path: /etc/kubernetes
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: yes
+  when: inventory_hostname == 'master1'
+  tags: networking
+
+- name: Generate CoreDNS manifest
+  ansible.builtin.template:
+    src: "{{ dns_plugin }}.yml.j2"
+    dest: "{{ dns_manifest_dest }}"
+    owner: root
+    group: root
+    mode: "0644"
+  become: yes
+  when: inventory_hostname == 'master1'
+  notify: Restart kubelet for DNS
+  tags: networking
+
+- name: Apply CoreDNS manifest
+  ansible.builtin.command:
+    cmd: kubectl --kubeconfig={{ dns_kubeconfig }} apply -f {{ dns_manifest_dest }}
+  register: dns_apply
+  changed_when: "'created' in dns_apply.stdout or 'configured' in dns_apply.stdout"
+  when: inventory_hostname == 'master1'
+  environment:
+    KUBECONFIG: "{{ dns_kubeconfig }}"
+  tags: networking
