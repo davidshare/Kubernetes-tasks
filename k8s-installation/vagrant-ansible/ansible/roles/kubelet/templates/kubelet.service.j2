@@ -1,17 +1,16 @@
 [Unit]
-Description=Kubernetes Kubelet
-Documentation=https://kubernetes.io/docs/
-After=containerd.service
+Description=Kubernetes Kubelet 
+Documentation=https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet/ 
+After=containerd.service 
 Requires=containerd.service
 
 [Service]
-ExecStart={{ kubelet_binary_dest }} \
-    --node-name={{ node_name }} \
-    --tls-cert-file={{ pki_dir }}/{{ kubelet_cert_file }} \
-    --tls-private-key-file={{ pki_dir }}/{{ kubelet_key_file }} \
-    {% for arg in kubelet_args %} {{ arg }} {% endfor %}
-Restart=on-failure
+ExecStart=/usr/local/bin/kubelet 
+{{ kubelet_args | join(' ') }} 
+Restart=always
+RestartSec=5
 LimitNOFILE=65536
+TimeoutStartSec=90
+TimeoutStopSec=90
 
-[Install]
-WantedBy=multi-user.target
+[Install] WantedBy=multi-user.target

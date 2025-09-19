@@ -1,15 +1,18 @@
-apiVersion: kubelet.config.k8s.io/v1beta1
 kind: KubeletConfiguration
+apiVersion: kubelet.config.k8s.io/v1beta1
 authentication:
   anonymous:
     enabled: false
   webhook:
     enabled: true
+  x509:
+    clientCAFile: "{{ pki_dir }}/ca.pem"
 authorization:
   mode: Webhook
-clusterDomain: cluster.local
 clusterDNS:
-  - "{{ service_cidr | ipaddr('10') }}"
-tlsCertFile: "{{ pki_dir }}/{{ kubelet_cert_file }}"
-tlsPrivateKeyFile: "{{ pki_dir }}/{{ kubelet_key_file }}"
+  - "{{ service_cidr | ipaddr('network') | ipaddr(10) | ipaddr('address') }}"
+clusterDomain: cluster.local
+runtimeRequestTimeout: "15m"
 cgroupDriver: systemd
+containerRuntime: remote
+containerRuntimeEndpoint: unix:///var/run/containerd/containerd.sock

@@ -1,8 +1,76 @@
-- name: Install kube-apiserver
-  include_tasks: install_apiserver.yml
+- name: Ensure Kubernetes manifests directory exists
+  file:
+    path: "{{ manifests_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: yes
+  when: inventory_hostname in groups['masters']
+  tags: control-plane
 
-- name: Install kube-controller-manager
-  include_tasks: install_controller_manager.yml
+- name: Ensure Kubernetes config directory exists
+  file:
+    path: "{{ config_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: yes
+  when: inventory_hostname in groups['masters']
+  tags: control-plane
 
-- name: Install kube-scheduler
-  include_tasks: install_scheduler.yml
+- name: Generate encryption key for at-rest encryption
+  command: >
+    head -c 32 /dev/urandom | base64
+  register: encryption_key
+  changed_when: false
+  when: inventory_hostname in groups['masters']
+  tags: control-plane
+
+- name: Deploy encryption config
+  template:
+    src: encryption-config.yaml.j2
+    dest: "{{ config_dir }}/encryption-config.yaml"
+    owner: root
+    group: root
+    mode: "0600"
+  become: yes
+  when: inventory_hostname in groups['masters']
+  tags: control-plane
+
+- name: Deploy kube-apiserver manifest
+  template:
+    src: kube-apiserver.yaml.j2
+    dest: "{{ manifests_dir }}/kube-apiserver.yaml"
+    owner: root
+    group: root
+    mode: "0644"
+  become: yes
+  when: inventory_hostname in groups['masters']
+  notify: Restart kubelet
+  tags: control-plane
+
+- name: Deploy kube-controller-manager manifest
+  template:
+    src: kube-controller-manager.yaml.j2
+    dest: "{{ manifests_dir }}/kube-controller-manager.yaml"
+    owner: root
+    group: root
+    mode: "0644"
+  become: yes
+  when: inventory_hostname in groups['masters']
+  notify: Restart kubelet
+  tags: control-plane
+
+- name: Deploy kube-scheduler manifest
+  template:
+    src: kube-scheduler.yaml.j2
+    dest: "{{ manifests_dir }}/kube-scheduler.yaml"
+    owner: root
+    group: root
+    mode: "0644"
+  become: yes
+  when: inventory_hostname in groups['masters']
+  notify: Restart kubelet
+  tags: control-plane

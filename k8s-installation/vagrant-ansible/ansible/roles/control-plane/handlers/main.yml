@@ -1,17 +1,7 @@
-# ansible/roles/control-plane/handlers/main.yml
-- name: Restart kube-apiserver
-  ansible.builtin.systemd:
-    name: kube-apiserver
+- name: Restart kubelet
+  systemd:
+    name: kubelet
     state: restarted
-
-- name: Restart kube-controller-manager
-  ansible.builtin.systemd:
-    name: kube-controller-manager
-    state: restarted
-
-- name: Restart kube-scheduler
-  ansible.builtin.systemd:
-    name: kube-scheduler
-    state: restarted
-
-
+  become: yes
+  when: inventory_hostname in groups['masters']
+  tags: control-plane

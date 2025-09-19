@@ -1,6 +1,5 @@
-
-apiVersion: apiserver.config.k8s.io/v1
-kind: EncryptionConfiguration
+kind: EncryptionConfig
+apiVersion: v1
 resources:
   - resources:
       - secrets
@@ -8,5 +7,5 @@ resources:
       - aescbc:
           keys:
             - name: key1
-              secret: "{{ lookup('password', '/dev/shm/encryption_key chars=ascii_letters,digits length=32') | b64encode }}"
+              secret: "{{ encryption_key.stdout }}"
       - identity: {}

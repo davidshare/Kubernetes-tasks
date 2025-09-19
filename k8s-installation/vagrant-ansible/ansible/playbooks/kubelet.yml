@@ -1,5 +1,7 @@
-- name: Configure kubelet
-  hosts: workers
+- name: Configure kubelet on master and worker nodes
+  hosts: masters:workers
   become: yes
+  gather_facts: yes
+  tags: kubelet
   roles:
     - kubelet

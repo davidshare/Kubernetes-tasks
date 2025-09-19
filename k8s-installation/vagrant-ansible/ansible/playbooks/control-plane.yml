@@ -1,5 +1,7 @@
-- name: Configure Kubernetes control plane
+- name: Configure Kubernetes control plane on master nodes
   hosts: masters
   become: yes
+  gather_facts: yes
+  tags: control-plane
   roles:
     - control-plane

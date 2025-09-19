@@ -1,4 +1,2 @@
-# Kubelet paths
-kubelet_binary_dest: /usr/local/bin/kubelet
-kubelet_config: "{{ config_dir }}/kubelet-config.yaml"
-kubelet_service: /etc/systemd/system/kubelet.service
+kubernetes_config_dir: "{{ config_dir }}"
+kubernetes_pki_dir: "{{ pki_dir }}"

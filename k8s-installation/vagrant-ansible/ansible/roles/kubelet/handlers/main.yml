@@ -1,4 +1,7 @@
 - name: Restart kubelet
-  ansible.builtin.systemd:
+  systemd:
     name: kubelet
     state: restarted
+  become: yes
+  when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+  tags: kubelet
