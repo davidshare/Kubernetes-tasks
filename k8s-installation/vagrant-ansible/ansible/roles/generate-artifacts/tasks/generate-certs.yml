@@ -163,7 +163,7 @@
     state: present
 
 - name: Generate etcd private key
-  community.crypto.opensql_privatekey:
+  community.crypto.openssl_privatekey:
     path: "{{ paths.artifacts.certs }}/etcd-server-key.pem"
     size: "{{ cert_key_size }}"
     state: present
