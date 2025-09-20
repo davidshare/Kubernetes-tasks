@@ -4,7 +4,7 @@
 require 'yaml'
 
 # Load network configuration from network.yml
-network_config = YAML.load_file('ansible/inventory/group_vars/network.yml')
+network_config = YAML.load_file('ansible/inventory/group_vars/all.yml')
 
 # Define resources
 RESOURCES = {

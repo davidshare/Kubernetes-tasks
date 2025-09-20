@@ -47,6 +47,23 @@ cert_key_size: 2048
 cert_expiry: "8760h"
 
 ssh_public_key_path: /home/vagrant/k8s-project/.vagrant/machines/jumpbox/virtualbox/private_key.pub
+
+network:
+  masters:
+    - ip: 192.168.56.11
+      name: master1
+  workers:
+    - ip: 192.168.56.21
+      name: worker1
+    - ip: 192.168.56.22
+      name: worker2
+  jumpbox:
+    ip: 192.168.56.40
+    name: jumpbox
+  pod_cidr: "{{ pod_network_cidr }}"
+  service_cidr: 10.96.0.0/12
+  dns_service_ip: "{{ service_cidr | ipaddr('10') }}"
+
 common_firewall_ports:
   - 22/tcp
   - 6443/tcp
