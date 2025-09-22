@@ -1,6 +1,6 @@
 - name: Get bootstrap token secrets
-  ansible.builtin.command:
-    cmd: kubectl --kubeconfig={{ hardening_kubeconfig }} -n kube-system get secret -o name | grep bootstrap-token || true
+  ansible.builtin.shell: |
+    kubectl --kubeconfig={{ hardening_kubeconfig }} -n kube-system get secret -o name | grep bootstrap-token || true
   register: secrets
   changed_when: false
   environment:

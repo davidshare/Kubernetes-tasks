@@ -1,0 +1,15 @@
+- name: Download CNI plugins
+  get_url:
+    url: "https://github.com/containernetworking/plugins/releases/download/v1.4.0/cni-plugins-linux-amd64-v1.4.0.tgz"
+    dest: "{{ paths.artifacts.binaries }}/cni-plugins.tgz"
+    mode: "0644"
+    timeout: "{{ download_timeout }}"
+  delegate_to: localhost
+
+- name: Extract CNI plugins
+  unarchive:
+    src: "{{ paths.artifacts.binaries }}/cni-plugins.tgz"
+    dest: "{{ paths.artifacts.binaries }}"
+    remote_src: yes
+    creates: "{{ paths.artifacts.binaries }}/loopback"
+  delegate_to: localhost

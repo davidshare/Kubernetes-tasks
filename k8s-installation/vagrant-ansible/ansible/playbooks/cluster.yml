@@ -38,4 +38,4 @@
   import_playbook: hardening.yml
 
 - name: Jumpbox Setup
-  import_playbook: jumpbox_setup.yml
+  import_playbook: jumpbox-setup.yml

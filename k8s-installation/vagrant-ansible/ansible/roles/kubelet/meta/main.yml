@@ -1,2 +1,6 @@
-dependencies:
-  - role: container-runtime
+dependencies: []
+galaxy_info:
+  role_name: kubelet
+  author: David Essien
+  description: Configure kubelet on Kubernetes worker nodes
+  license: MIT

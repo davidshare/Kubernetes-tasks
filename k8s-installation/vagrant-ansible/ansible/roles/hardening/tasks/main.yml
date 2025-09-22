@@ -10,8 +10,5 @@
 - name: Configure RBAC
   include_tasks: configure-rbac.yml
 
-- name: Configure Pod Security Admission
-  include_tasks: configure-psa.yml
-
 - name: Configure etcd backup
   include_tasks: etcd-backup.yml

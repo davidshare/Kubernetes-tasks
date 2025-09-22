@@ -18,6 +18,19 @@
   when: inventory_hostname in groups['masters']
   tags: bootstrap
 
+# - name: Wait for Kubernetes API Server to be ready
+#   ansible.builtin.uri:
+#     url: "https://{{ kubernetes_public_address }}:{{ api_server_port }}/healthz"
+#     validate_certs: false # Necessary because we're hitting it directly before full cluster CA trust is established for this check
+#     status_code: 200
+#     timeout: 5
+#   register: api_health
+#   until: api_health.status == 200
+#   retries: 30
+#   delay: 10
+#   when: inventory_hostname in groups['masters']
+#   tags: bootstrap
+
 - name: Create bootstrap token secret
   ansible.builtin.command:
     cmd: kubectl --kubeconfig={{ config_dir }}/admin.kubeconfig create secret generic bootstrap-token-{{ bootstrap_token_id }} -n kube-system --type=bootstrap.kubernetes.io/token --from-literal=token-id={{ bootstrap_token_id }} --from-literal=token-secret={{ bootstrap_token_secret }} --from-literal=usage-bootstrap-authentication=true --from-literal=usage-bootstrap-signing=true

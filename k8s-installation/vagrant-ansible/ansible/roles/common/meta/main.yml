@@ -1,1 +1,6 @@
 dependencies: []
+galaxy_info:
+  role_name: common
+  author: David Essien
+  description: Install prerequisite packages for cluster nodes
+  license: MIT

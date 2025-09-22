@@ -1,0 +1,27 @@
+- name: Ensure CNI bin directory exists
+  file:
+    path: /opt/cni/bin
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: yes
+
+- name: Distribute CNI plugins to nodes
+  copy:
+    src: "{{ paths.artifacts.binaries }}/{{ item }}"
+    dest: "/opt/cni/bin/{{ item }}"
+    mode: "0755"
+    owner: root
+    group: root
+  loop:
+    - loopback
+    - bridge
+    - host-local
+    - portmap
+    - firewall
+    - tuning
+    - vlan
+    - bandwidth
+  become: yes
+  when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']

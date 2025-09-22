@@ -5,7 +5,7 @@ After=containerd.service
 Requires=containerd.service
 
 [Service]
-ExecStart=/usr/local/bin/kubelet 
+ExecStart=/usr/local/bin/kubelet \
 {{ kubelet_args | join(' ') }} 
 Restart=always
 RestartSec=5
@@ -13,4 +13,5 @@ LimitNOFILE=65536
 TimeoutStartSec=90
 TimeoutStopSec=90
 
-[Install] WantedBy=multi-user.target
+[Install] 
+WantedBy=multi-user.target

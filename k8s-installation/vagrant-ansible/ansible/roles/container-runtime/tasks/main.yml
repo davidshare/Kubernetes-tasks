@@ -60,3 +60,8 @@
   become: yes
   when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
   tags: container-runtime
+
+- name: Configure crictl
+  include_tasks: configure-crictl.yml
+  when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+  tags: container-runtime

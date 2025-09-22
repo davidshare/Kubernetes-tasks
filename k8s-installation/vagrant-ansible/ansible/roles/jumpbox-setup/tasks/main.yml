@@ -1,38 +1,77 @@
+- name: Ensure config directory exists on nodes
+  file:
+    path: "{{ paths.kubernetes.config_dir }}"
+    state: directory
+    owner: "{{ 'vagrant' if inventory_hostname == 'jumpbox' else 'root' }}"
+    group: "{{ 'vagrant' if inventory_hostname == 'jumpbox' else 'root' }}"
+    mode: "{{ '0755' if inventory_hostname == 'jumpbox' else '0700' }}"
+
+- name: Ensure parent directory permissions on jumpbox
+  ansible.builtin.file:
+    path: "{{ base_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: yes
+  when: inventory_hostname in groups['jumpboxes']
+  tags: jumpbox
+
+- name: Distribute kubectl to jumpbox
+  copy:
+    src: "{{ paths.artifacts.binaries }}/kubectl"
+    dest: "/usr/local/bin/kubectl"
+    mode: "0755"
+    owner: "{{ jumpbox_user | default('vagrant') }}"
+    group: "{{ jumpbox_user | default('vagrant') }}"
+  when: inventory_hostname == 'jumpbox'
+  retries: "3"
+
 - name: Ensure kubectl binary exists
   ansible.builtin.stat:
     path: "{{ kubectl_dest }}"
   register: kubectl_stat
   failed_when: not kubectl_stat.stat.exists
-  when: inventory_hostname in groups['jumpbox']
+  when: inventory_hostname in groups['jumpboxes']
   tags: jumpbox
+
+- name: Distribute admin kubeconfig to jumpbox
+  copy:
+    src: "{{ paths.artifacts.kubeconfigs }}/admin.kubeconfig"
+    dest: "{{ paths.kubernetes.config_dir }}/admin.kubeconfig"
+    mode: "0600"
+    owner: "{{ jumpbox_user | default('vagrant') }}"
+    group: "{{ jumpbox_user | default('vagrant') }}"
+  when: inventory_hostname == 'jumpbox'
+  retries: "3"
 
 - name: Ensure admin kubeconfig exists
   ansible.builtin.stat:
     path: "{{ kubeconfig_dest }}"
   register: kubeconfig_stat
   failed_when: not kubeconfig_stat.stat.exists
-  when: inventory_hostname in groups['jumpbox']
+  when: inventory_hostname in groups['jumpboxes']
   tags: jumpbox
 
 - name: Ensure config directory permissions
   ansible.builtin.file:
     path: "{{ config_dir }}"
     state: directory
-    owner: "{{ jumpbox_user }}"
-    group: "{{ jumpbox_user }}"
+    owner: "{{ jumpbox_user | default('vagrant') }}"
+    group: "{{ jumpbox_user | default('vagrant') }}"
     mode: "0755"
   become: yes
-  when: inventory_hostname in groups['jumpbox']
+  when: inventory_hostname in groups['jumpboxes']
   tags: jumpbox
 
 - name: Ensure admin kubeconfig permissions
   ansible.builtin.file:
     path: "{{ kubeconfig_dest }}"
-    owner: "{{ jumpbox_user }}"
-    group: "{{ jumpbox_user }}"
+    owner: "{{ jumpbox_user | default('vagrant') }}"
+    group: "{{ jumpbox_user | default('vagrant') }}"
     mode: "0600"
   become: yes
-  when: inventory_hostname in groups['jumpbox']
+  when: inventory_hostname in groups['jumpboxes']
   tags: jumpbox
 
 - name: Configure KUBECONFIG in user bashrc
@@ -41,11 +80,11 @@
     line: "export KUBECONFIG={{ kubeconfig_dest }}"
     state: present
     create: yes
-    owner: "{{ jumpbox_user }}"
-    group: "{{ jumpbox_user }}"
+    owner: "{{ jumpbox_user | default('vagrant') }}"
+    group: "{{ jumpbox_user | default('vagrant') }}"
     mode: "0644"
   become: yes
-  when: inventory_hostname in groups['jumpbox']
+  when: inventory_hostname in groups['jumpboxes']
   tags: jumpbox
 
 - name: Verify cluster access
@@ -55,5 +94,5 @@
   changed_when: false
   environment:
     KUBECONFIG: "{{ kubeconfig_dest }}"
-  when: inventory_hostname in groups['jumpbox']
+  when: inventory_hostname in groups['jumpboxes']
   tags: jumpbox

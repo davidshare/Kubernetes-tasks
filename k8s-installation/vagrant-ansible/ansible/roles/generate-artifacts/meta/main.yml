@@ -1,5 +1,4 @@
-dependencies:
-  - download-artifacts # Requires binaries if any, but mainly paths
+dependencies: []
 galaxy_info:
   role_name: generate-artifacts
   author: David Essien

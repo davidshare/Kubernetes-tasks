@@ -9,18 +9,26 @@ metadata:
 spec:
   containers:
   - name: kube-scheduler
-    image: registry.k8s.io/kube-scheduler:v{{ kubernetes_version }}
+    image: registry.k8s.io/kube-scheduler:v{{ versions.kubernetes }}
     command:
       - /usr/local/bin/kube-scheduler
-      - --kubeconfig={{ config_dir }}/kube-scheduler.kubeconfig
+      - --kubeconfig
+      - {{ config_dir }}/kube-scheduler.kubeconfig
       - --leader-elect=true
     volumeMounts:
     - name: kubernetes-config
       mountPath: /etc/kubernetes/configs
+      readOnly: true
+    - name: kubernetes-pki
+      mountPath: /var/lib/kubernetes
       readOnly: true
   hostNetwork: true
   volumes:
   - name: kubernetes-config
     hostPath:
       path: {{ config_dir }}
+      type: Directory
+  - name: kubernetes-pki
+    hostPath:
+      path: {{ pki_dir }}
       type: Directory

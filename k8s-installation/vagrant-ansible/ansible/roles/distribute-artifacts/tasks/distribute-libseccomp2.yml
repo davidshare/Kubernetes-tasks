@@ -7,7 +7,8 @@
       - "--chmod=0644"
       - "--owner=root"
       - "--group=root"
-  delegate_to: jumpbox
+  delegate_to: localhost
+
   when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
   retries: "{{ distribute_retries }}"
   tags: [artifacts, libseccomp2]
@@ -19,11 +20,10 @@
   become: yes
   when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
   tags: [artifacts, libseccomp2]
-
-- name: Remove temporary libseccomp2 deb package
-  file:
-    path: "/tmp/libseccomp2_{{ versions.libseccomp2 }}_amd64.deb"
-    state: absent
-  become: yes
-  when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
-  tags: [artifacts, libseccomp2]
+# - name: Remove temporary libseccomp2 deb package
+#   file:
+#     path: "/tmp/libseccomp2_{{ versions.libseccomp2 }}_amd64.deb"
+#     state: absent
+#   become: yes
+#   when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+#   tags: [artifacts, libseccomp2]

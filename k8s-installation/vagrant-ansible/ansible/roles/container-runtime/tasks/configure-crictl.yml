@@ -1,0 +1,23 @@
+- name: Ensure crictl config directory exists
+  file:
+    path: /etc
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: yes
+
+- name: Deploy crictl configuration
+  copy:
+    content: |
+      runtime-endpoint: "unix:///var/run/containerd/containerd.sock"
+      image-endpoint: "unix:///var/run/containerd/containerd.sock"
+      timeout: 10
+      debug: false
+    dest: /etc/crictl.yaml
+    owner: root
+    group: root
+    mode: "0644"
+  become: yes
+  when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+  tags: container-runtime

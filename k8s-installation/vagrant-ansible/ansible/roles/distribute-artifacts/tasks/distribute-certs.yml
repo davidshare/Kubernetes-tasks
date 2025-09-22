@@ -4,7 +4,16 @@
     state: directory
     owner: root
     group: root
+    mode: "0755"
+
+- name: Ensure etcd configuration directory exists on masters
+  file:
+    path: /etc/etcd
+    state: directory
+    owner: root
+    group: root
     mode: "0700"
+  when: inventory_hostname in groups['masters']
 
 - name: Distribute CA certificate to all nodes
   copy:
@@ -18,7 +27,6 @@
     - ca-key.pem
   when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
   retries: "{{ distribute_retries }}"
-  delegate_to: localhost
 
 - name: Distribute API server certificates to masters
   copy:
@@ -32,7 +40,6 @@
     - apiserver-key.pem
   when: inventory_hostname in groups['masters']
   retries: "{{ distribute_retries }}"
-  delegate_to: localhost
 
 - name: Distribute controller manager certificates to masters
   copy:
@@ -46,7 +53,6 @@
     - kube-controller-manager-key.pem
   when: inventory_hostname in groups['masters']
   retries: "{{ distribute_retries }}"
-  delegate_to: localhost
 
 - name: Distribute scheduler certificates to masters
   copy:
@@ -60,7 +66,6 @@
     - kube-scheduler-key.pem
   when: inventory_hostname in groups['masters']
   retries: "{{ distribute_retries }}"
-  delegate_to: localhost
 
 - name: Distribute service account keys to masters
   copy:
@@ -74,7 +79,6 @@
     - sa-key.pem
   when: inventory_hostname in groups['masters']
   retries: "{{ distribute_retries }}"
-  delegate_to: localhost
 
 - name: Distribute etcd certificates to masters
   copy:
@@ -86,11 +90,21 @@
   loop:
     - etcd-server.pem
     - etcd-server-key.pem
+  when: inventory_hostname in groups['masters']
+  retries: "{{ distribute_retries }}"
+
+- name: Distribute apiserver etcd client certificates to masters
+  copy:
+    src: "{{ paths.artifacts.certs }}/{{ item }}"
+    dest: "{{ paths.kubernetes.pki_dir }}/{{ item }}"
+    mode: "0600"
+    owner: root
+    group: root
+  loop:
     - apiserver-etcd-client.pem
     - apiserver-etcd-client-key.pem
   when: inventory_hostname in groups['masters']
   retries: "{{ distribute_retries }}"
-  delegate_to: localhost
 
 - name: Distribute kubelet certificates to nodes
   copy:
@@ -101,7 +115,6 @@
     group: root
   when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
   retries: "{{ distribute_retries }}"
-  delegate_to: localhost
 
 - name: Distribute kubelet private key to nodes
   copy:
@@ -112,7 +125,6 @@
     group: root
   when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
   retries: "{{ distribute_retries }}"
-  delegate_to: localhost
 
 - name: Distribute kube-proxy certificates to workers
   copy:
@@ -126,4 +138,3 @@
     - kube-proxy-key.pem
   when: inventory_hostname in groups['workers']
   retries: "{{ distribute_retries }}"
-  delegate_to: localhost

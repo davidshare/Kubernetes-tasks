@@ -9,15 +9,16 @@ metadata:
 spec:
   containers:
   - name: kube-apiserver
-    image: registry.k8s.io/kube-apiserver:v{{ kubernetes_version }}
+    image: registry.k8s.io/kube-apiserver:v{{ versions.kubernetes }}
     command:
       - /usr/local/bin/kube-apiserver
-      {% for arg in kube_apiserver_args %}
-      - {{ arg }}
-      {% endfor %}
-      - --encryption-provider-config={{ config_dir }}/encryption-config.yaml
       - --bind-address={{ kube_apiserver_bind_address }}
       - --secure-port={{ kube_apiserver_port }}
+      - --admission-control-config-file={{ config_dir }}/pod-security-admission.yaml
+      - --enable-admission-plugins=PodSecurity
+{% for arg in kube_apiserver_args %}
+      - {{ arg }}
+{% endfor %}
     volumeMounts:
     - name: kubernetes-config
       mountPath: /etc/kubernetes/configs

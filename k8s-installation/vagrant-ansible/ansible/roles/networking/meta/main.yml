@@ -1,6 +1,4 @@
-dependencies:
-  - control-plane
-  - cni
+dependencies: []
 galaxy_info:
   role_name: networking
   author: David Essien

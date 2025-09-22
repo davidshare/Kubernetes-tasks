@@ -1,6 +1,9 @@
 - name: Distribute binaries
   include_tasks: distribute-binaries.yml
 
+- name: Distribute CNI plugins
+  include_tasks: distribute-cni-plugins.yml
+
 - name: Distribute libseccomp2 package
   include: distribute-libseccomp2.yml
 

@@ -1,3 +1,6 @@
-dependencies:
-  - role: common
-  - role: distribute-artifacts
+dependencies: []
+galaxy_info:
+  role_name: etcd
+  author: David Essien
+  description: Setup and configure etcd
+  license: MIT

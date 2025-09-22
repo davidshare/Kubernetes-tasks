@@ -4,14 +4,14 @@ etcd_args:
   - --client-cert-auth=true
   - --cert-file={{ etcd.cert_dir }}/etcd-server.pem
   - --key-file={{ etcd.cert_dir }}/etcd-server-key.pem
-  - --trusted-ca-file={{ kubernetes.pki_dir }}/ca.pem
+  - --trusted-ca-file={{ paths.kubernetes.pki_dir }}/ca.pem
   - --peer-cert-file={{ etcd.cert_dir }}/etcd-server.pem
   - --peer-key-file={{ etcd.cert_dir }}/etcd-server-key.pem
-  - --peer-trusted-ca-file={{ kubernetes.pki_dir }}/ca.pem
+  - --peer-trusted-ca-file={{ paths.kubernetes.pki_dir }}/ca.pem
   - --initial-cluster={{ etcd_initial_cluster }}
   - --initial-cluster-state=new
   - --listen-client-urls=https://0.0.0.0:2379
   - --advertise-client-urls=https://{{ kubernetes_public_address }}:2379
   - --listen-peer-urls=https://0.0.0.0:2380
   - --initial-advertise-peer-urls=https://{{ kubernetes_public_address }}:2380
-etcd_initial_cluster: "{{ groups.etcd | map('regex_replace', '^(.*)$', '\\1=https://' ~ hostvars[item].ansible_host ~ ':2380') | join(',') }}"
+etcd_initial_cluster: "{% for host in groups.etcd %}{{ host }}=https://{{ hostvars[host].ansible_host }}:2380{% if not loop.last %},{% endif %}{% endfor %}"

@@ -14,5 +14,7 @@ clusterDNS:
 clusterDomain: cluster.local
 runtimeRequestTimeout: "15m"
 cgroupDriver: systemd
-containerRuntime: remote
 containerRuntimeEndpoint: unix:///var/run/containerd/containerd.sock
+staticPodPath: /etc/kubernetes/manifests
+tlsCertFile: "{{ pki_dir }}/{{ kubelet_cert_file }}"
+tlsPrivateKeyFile: "{{ pki_dir }}/{{ kubelet_key_file }}"

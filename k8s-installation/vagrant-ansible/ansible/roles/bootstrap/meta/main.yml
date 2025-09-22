@@ -1,5 +1,4 @@
-dependencies:
-  - control-plane
+dependencies: []
 galaxy_info:
   role_name: bootstrap
   author: David Essien

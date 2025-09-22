@@ -7,6 +7,9 @@
 - name: Download containerd binaries
   include: download-containerd.yml
 
+- name: Download crictl binary
+  include: download-crictl.yml
+
 - name: Download etcd binaries
   include: download-etcd.yml
 
@@ -18,6 +21,9 @@
 
 - name: Download flannel and calico yaml files
   include: download-flannel-and-calico.yml
+
+- name: Download CNI plugins
+  include: download-cni-plugins.yml
 
 - name: Cleanup unncessary files
   include: cleanup.yml

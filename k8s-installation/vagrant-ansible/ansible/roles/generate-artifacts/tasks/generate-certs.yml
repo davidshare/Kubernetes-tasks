@@ -1,10 +1,11 @@
+---
 - name: Ensure certs directory exists
-  file:
+  ansible.builtin.file:
     path: "{{ paths.artifacts.certs }}"
     state: directory
     owner: vagrant
     group: vagrant
-    mode: '0700'
+    mode: "0700"
   delegate_to: localhost
 
 - name: Generate CA private key
@@ -12,6 +13,7 @@
     path: "{{ paths.artifacts.certs }}/ca-key.pem"
     size: "{{ cert_key_size }}"
     state: present
+  delegate_to: localhost
 
 - name: Generate CA CSR
   community.crypto.openssl_csr:
@@ -19,26 +21,29 @@
     privatekey_path: "{{ paths.artifacts.certs }}/ca-key.pem"
     common_name: "Kubernetes"
     basic_constraints:
-      - CA: true
+      - CA:TRUE
+      - pathlen:0
     key_usage:
       - keyCertSign
       - cRLSign
     state: present
+  delegate_to: localhost
 
 - name: Self-sign CA certificate
   community.crypto.x509_certificate:
     path: "{{ paths.artifacts.certs }}/ca.pem"
     csr_path: "{{ paths.artifacts.certs }}/ca.csr"
-    ownca_path: "{{ paths.artifacts.certs }}/ca.pem"
-    ownca_privatekey_path: "{{ paths.artifacts.certs }}/ca-key.pem"
+    privatekey_path: "{{ paths.artifacts.certs }}/ca-key.pem"
     provider: selfsigned
     state: present
+  delegate_to: localhost
 
 - name: Generate admin private key
   community.crypto.openssl_privatekey:
     path: "{{ paths.artifacts.certs }}/admin-key.pem"
     size: "{{ cert_key_size }}"
     state: present
+  delegate_to: localhost
 
 - name: Generate admin CSR
   community.crypto.openssl_csr:
@@ -48,24 +53,27 @@
     organization_name: "system:masters"
     organizational_unit_name: "Kubernetes The Hard Way"
     country_name: "US"
-    state: "California"
-    locality: "San Francisco"
+    state_or_province_name: "California"
+    locality_name: "San Francisco"
     state: present
+  delegate_to: localhost
 
 - name: Sign admin certificate
   community.crypto.x509_certificate:
     path: "{{ paths.artifacts.certs }}/admin.pem"
     csr_path: "{{ paths.artifacts.certs }}/admin.csr"
-    ca_path: "{{ paths.artifacts.certs }}/ca.pem"
-    ca_key_path: "{{ paths.artifacts.certs }}/ca-key.pem"
-    provider: signcsr
+    ownca_path: "{{ paths.artifacts.certs }}/ca.pem"
+    ownca_privatekey_path: "{{ paths.artifacts.certs }}/ca-key.pem"
+    provider: ownca
     state: present
+  delegate_to: localhost
 
 - name: Generate API server private key
   community.crypto.openssl_privatekey:
     path: "{{ paths.artifacts.certs }}/apiserver-key.pem"
     size: "{{ cert_key_size }}"
     state: present
+  delegate_to: localhost
 
 - name: Generate API server CSR
   community.crypto.openssl_csr:
@@ -75,8 +83,8 @@
     organization_name: "Kubernetes"
     organizational_unit_name: "Kubernetes"
     country_name: "US"
-    state: "Oregon"
-    locality: "Portland"
+    state_or_province_name: "Oregon"
+    locality_name: "Portland"
     subject_alt_name:
       - "IP:127.0.0.1"
       - "IP:{{ kubernetes_internal_address }}"
@@ -86,21 +94,24 @@
       - "DNS:kubernetes.default.svc"
       - "DNS:kubernetes.default.svc.cluster.local"
     state: present
+  delegate_to: localhost
 
 - name: Sign API server certificate
   community.crypto.x509_certificate:
     path: "{{ paths.artifacts.certs }}/apiserver.pem"
     csr_path: "{{ paths.artifacts.certs }}/kubernetes.csr"
-    ca_path: "{{ paths.artifacts.certs }}/ca.pem"
-    ca_key_path: "{{ paths.artifacts.certs }}/ca-key.pem"
-    provider: signcsr
+    ownca_path: "{{ paths.artifacts.certs }}/ca.pem"
+    ownca_privatekey_path: "{{ paths.artifacts.certs }}/ca-key.pem"
+    provider: ownca
     state: present
+  delegate_to: localhost
 
 - name: Generate controller manager private key
   community.crypto.openssl_privatekey:
     path: "{{ paths.artifacts.certs }}/kube-controller-manager-key.pem"
     size: "{{ cert_key_size }}"
     state: present
+  delegate_to: localhost
 
 - name: Generate controller manager CSR
   community.crypto.openssl_csr:
@@ -110,24 +121,27 @@
     organization_name: "system:kube-controller-manager"
     organizational_unit_name: "Kubernetes The Hard Way"
     country_name: "US"
-    state: "California"
-    locality: "San Francisco"
+    state_or_province_name: "California"
+    locality_name: "San Francisco"
     state: present
+  delegate_to: localhost
 
 - name: Sign controller manager certificate
   community.crypto.x509_certificate:
     path: "{{ paths.artifacts.certs }}/kube-controller-manager.pem"
     csr_path: "{{ paths.artifacts.certs }}/kube-controller-manager.csr"
-    ca_path: "{{ paths.artifacts.certs }}/ca.pem"
-    ca_key_path: "{{ paths.artifacts.certs }}/ca-key.pem"
-    provider: signcsr
+    ownca_path: "{{ paths.artifacts.certs }}/ca.pem"
+    ownca_privatekey_path: "{{ paths.artifacts.certs }}/ca-key.pem"
+    provider: ownca
     state: present
+  delegate_to: localhost
 
 - name: Generate scheduler private key
   community.crypto.openssl_privatekey:
     path: "{{ paths.artifacts.certs }}/kube-scheduler-key.pem"
     size: "{{ cert_key_size }}"
     state: present
+  delegate_to: localhost
 
 - name: Generate scheduler CSR
   community.crypto.openssl_csr:
@@ -137,36 +151,27 @@
     organization_name: "system:kube-scheduler"
     organizational_unit_name: "Kubernetes The Hard Way"
     country_name: "US"
-    state: "California"
-    locality: "San Francisco"
+    state_or_province_name: "California"
+    locality_name: "San Francisco"
     state: present
+  delegate_to: localhost
 
 - name: Sign scheduler certificate
   community.crypto.x509_certificate:
     path: "{{ paths.artifacts.certs }}/kube-scheduler.pem"
     csr_path: "{{ paths.artifacts.certs }}/kube-scheduler.csr"
-    ca_path: "{{ paths.artifacts.certs }}/ca.pem"
-    ca_key_path: "{{ paths.artifacts.certs }}/ca-key.pem"
-    provider: signcsr
+    ownca_path: "{{ paths.artifacts.certs }}/ca.pem"
+    ownca_privatekey_path: "{{ paths.artifacts.certs }}/ca-key.pem"
+    provider: ownca
     state: present
-
-- name: Generate service account private key
-  community.crypto.openssl_privatekey:
-    path: "{{ paths.artifacts.certs }}/sa-key.pem"
-    size: "{{ cert_key_size }}"
-    state: present
-
-- name: Generate service account public key
-  community.crypto.openssl_publickey:
-    path: "{{ paths.artifacts.certs }}/sa.pub"
-    privatekey_path: "{{ paths.artifacts.certs }}/sa-key.pem"
-    state: present
+  delegate_to: localhost
 
 - name: Generate etcd private key
   community.crypto.openssl_privatekey:
     path: "{{ paths.artifacts.certs }}/etcd-server-key.pem"
     size: "{{ cert_key_size }}"
     state: present
+  delegate_to: localhost
 
 - name: Generate etcd CSR
   community.crypto.openssl_csr:
@@ -176,8 +181,8 @@
     organization_name: "etcd"
     organizational_unit_name: "Kubernetes"
     country_name: "US"
-    state: "Oregon"
-    locality: "Portland"
+    state_or_province_name: "Oregon"
+    locality_name: "Portland"
     subject_alt_name:
       - "IP:127.0.0.1"
       - "IP:{{ kubernetes_public_address }}"
@@ -185,21 +190,24 @@
       - "DNS:etcd"
       - "DNS:etcd.local"
     state: present
+  delegate_to: localhost
 
 - name: Sign etcd certificate
   community.crypto.x509_certificate:
     path: "{{ paths.artifacts.certs }}/etcd-server.pem"
     csr_path: "{{ paths.artifacts.certs }}/etcd.csr"
-    ca_path: "{{ paths.artifacts.certs }}/ca.pem"
-    ca_key_path: "{{ paths.artifacts.certs }}/ca-key.pem"
-    provider: signcsr
+    ownca_path: "{{ paths.artifacts.certs }}/ca.pem"
+    ownca_privatekey_path: "{{ paths.artifacts.certs }}/ca-key.pem"
+    provider: ownca
     state: present
+  delegate_to: localhost
 
 - name: Generate API server etcd client private key
   community.crypto.openssl_privatekey:
     path: "{{ paths.artifacts.certs }}/apiserver-etcd-client-key.pem"
     size: "{{ cert_key_size }}"
     state: present
+  delegate_to: localhost
 
 - name: Generate API server etcd client CSR
   community.crypto.openssl_csr:
@@ -209,24 +217,27 @@
     organization_name: "system:masters"
     organizational_unit_name: "Kubernetes"
     country_name: "US"
-    state: "Oregon"
-    locality: "Portland"
+    state_or_province_name: "Oregon"
+    locality_name: "Portland"
     state: present
+  delegate_to: localhost
 
 - name: Sign API server etcd client certificate
   community.crypto.x509_certificate:
     path: "{{ paths.artifacts.certs }}/apiserver-etcd-client.pem"
     csr_path: "{{ paths.artifacts.certs }}/apiserver-etcd-client.csr"
-    ca_path: "{{ paths.artifacts.certs }}/ca.pem"
-    ca_key_path: "{{ paths.artifacts.certs }}/ca-key.pem"
-    provider: signcsr
+    ownca_path: "{{ paths.artifacts.certs }}/ca.pem"
+    ownca_privatekey_path: "{{ paths.artifacts.certs }}/ca-key.pem"
+    provider: ownca
     state: present
+  delegate_to: localhost
 
 - name: Generate kube-proxy private key
   community.crypto.openssl_privatekey:
     path: "{{ paths.artifacts.certs }}/kube-proxy-key.pem"
     size: "{{ cert_key_size }}"
     state: present
+  delegate_to: localhost
 
 - name: Generate kube-proxy CSR
   community.crypto.openssl_csr:
@@ -236,24 +247,41 @@
     organization_name: "system:node-proxier"
     organizational_unit_name: "Kubernetes The Hard Way"
     country_name: "US"
-    state: "Oregon"
-    locality: "Portland"
+    state_or_province_name: "Oregon"
+    locality_name: "Portland"
     state: present
+  delegate_to: localhost
 
 - name: Sign kube-proxy certificate
   community.crypto.x509_certificate:
     path: "{{ paths.artifacts.certs }}/kube-proxy.pem"
     csr_path: "{{ paths.artifacts.certs }}/kube-proxy.csr"
-    ca_path: "{{ paths.artifacts.certs }}/ca.pem"
-    ca_key_path: "{{ paths.artifacts.certs }}/ca-key.pem"
-    provider: signcsr
+    ownca_path: "{{ paths.artifacts.certs }}/ca.pem"
+    ownca_privatekey_path: "{{ paths.artifacts.certs }}/ca-key.pem"
+    provider: ownca
     state: present
+  delegate_to: localhost
+
+- name: Generate service account private key
+  community.crypto.openssl_privatekey:
+    path: "{{ paths.artifacts.certs }}/sa-key.pem"
+    size: "{{ cert_key_size }}"
+    state: present
+  delegate_to: localhost
+
+- name: Generate service account public key
+  community.crypto.openssl_publickey:
+    path: "{{ paths.artifacts.certs }}/sa.pub"
+    privatekey_path: "{{ paths.artifacts.certs }}/sa-key.pem"
+    state: present
+  delegate_to: localhost
 
 - name: Generate kubelet private key (generic, will override per-node)
   community.crypto.openssl_privatekey:
     path: "{{ paths.artifacts.certs }}/kubelet-key.pem"
     size: "{{ cert_key_size }}"
     state: present
+  delegate_to: localhost
 
 - name: Generate kubelet CSR per node
   community.crypto.openssl_csr:
@@ -263,17 +291,19 @@
     organization_name: "system:nodes"
     organizational_unit_name: "Kubernetes The Hard Way"
     country_name: "US"
-    state: "California"
-    locality: "San Francisco"
+    state_or_province_name: "California"
+    locality_name: "San Francisco"
     state: present
   loop: "{{ groups['masters'] + groups['workers'] }}"
+  delegate_to: localhost
 
 - name: Sign kubelet certificates per node
   community.crypto.x509_certificate:
     path: "{{ paths.artifacts.certs }}/{{ item }}.pem"
     csr_path: "{{ paths.artifacts.certs }}/{{ item }}.csr"
-    ca_path: "{{ paths.artifacts.certs }}/ca.pem"
-    ca_key_path: "{{ paths.artifacts.certs }}/ca-key.pem"
-    provider: signcsr
+    ownca_path: "{{ paths.artifacts.certs }}/ca.pem"
+    ownca_privatekey_path: "{{ paths.artifacts.certs }}/ca-key.pem"
+    provider: ownca
     state: present
   loop: "{{ groups['masters'] + groups['workers'] }}"
+  delegate_to: localhost

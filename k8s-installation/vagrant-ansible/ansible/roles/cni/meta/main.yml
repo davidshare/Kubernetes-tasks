@@ -1,6 +1,4 @@
-dependencies:
-  - distribute-artifacts
-  - control-plane
+dependencies: []
 galaxy_info:
   role_name: cni
   author: David Essien

@@ -18,19 +18,9 @@
   when: inventory_hostname == 'master1' and cni_plugin == 'calico'
   tags: hardening
 
-- name: Apply Pod Security Admission
-  ansible.builtin.command:
-    cmd: kubectl --kubeconfig={{ hardening_kubeconfig }} apply -f {{ pod_security_admission }}
-  register: psa_apply
-  changed_when: "'created' in psa_apply.stdout or 'configured' in psa_apply.stdout"
-  environment:
-    KUBECONFIG: "{{ hardening_kubeconfig }}"
-  when: inventory_hostname == 'master1'
-  tags: hardening
-
 - name: Restart kube-apiserver for audit
   ansible.builtin.systemd:
-    name: kube-apiserver
+    name: kubelet
     state: restarted
   become: yes
   when: inventory_hostname in groups['masters']

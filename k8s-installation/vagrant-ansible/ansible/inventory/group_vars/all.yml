@@ -32,6 +32,17 @@ flannel_manifest: "{{ paths.artifacts.manifests }}/kube-flannel.yml"
 kubernetes_public_address: "{{ network.masters[0].ip }}"
 kubernetes_internal_address: 10.32.0.1
 
+kubelet_cert_file: "kubelet.pem"
+kubelet_key_file: "kubelet-key.pem"
+kube_proxy_cert_file: "kube-proxy.pem"
+kube_proxy_key_file: "kube-proxy-key.pem"
+kubelet_args:
+  - --config={{ paths.kubernetes.config_dir }}/kubelet-config.yaml
+  - --kubeconfig={{ paths.kubernetes.config_dir }}/kubelet.kubeconfig
+
+kube_proxy_args:
+  - --config={{ paths.kubernetes.config_dir }}/kube-proxy-config.yaml
+
 # Network settings
 service_cidr: 10.96.0.0/12
 api_server_port: 6443
@@ -70,6 +81,7 @@ common_firewall_ports:
   - 2379/tcp
   - 2380/tcp
 
+dns_plugin: "coredns"
 cni_plugin: flannel
 cni_manifest_paths:
   flannel: "{{ paths.artifacts.manifests }}/kube-flannel.yml"
@@ -82,6 +94,7 @@ cni_configs:
     pod_network_cidr: 192.168.0.0/16
 
 pod_network_cidr: "{{ cni_configs[cni_plugin].pod_network_cidr }}"
+cluster_cidr: "{{ pod_network_cidr }}"
 
 cni_extra_ports:
   flannel:
@@ -113,6 +126,7 @@ versions:
   libseccomp2: "2.5.3-2ubuntu3~22.04.1"
   flannel: "master"
   calico: "3.27.3"
+  crictl: "1.34.0"
 
 download_urls:
   kubernetes:
@@ -125,6 +139,8 @@ download_urls:
     kubectl: "https://dl.k8s.io/v{{ versions.kubernetes }}/bin/linux/amd64/kubectl"
   etcd:
     tarball: "https://github.com/etcd-io/etcd/releases/download/v{{ versions.etcd }}/etcd-v{{ versions.etcd }}-linux-amd64.tar.gz"
+  crictl:
+    tarball: "https://github.com/kubernetes-sigs/cri-tools/releases/download/v{{ versions.crictl }}/crictl-v{{ versions.crictl }}-linux-amd64.tar.gz"
   containerd:
     tarball: "https://github.com/containerd/containerd/releases/download/v{{ versions.containerd }}/containerd-{{ versions.containerd }}-linux-amd64.tar.gz"
   runc:
@@ -145,6 +161,8 @@ checksums:
     kubectl: "sha256:7721f265e18709862655affba5343e85e1980639395d5754473dafaadcaa69e3"
   etcd:
     tarball: "sha256:4d5f3101daa534e45ccaf3eec8d21c19b7222db377bcfd5e5a9144155238c105"
+  crictl:
+    tarball: "sha256:a8ff2a3edb37a98daf3aba7c3b284fe0aa5bff24166d896ab9ef64c8913c9f51"
   containerd:
     tarball: "sha256:316d510a0428276d931023f72c09fdff1a6ba81d6cc36f31805fea6a3c88f515"
   runc:

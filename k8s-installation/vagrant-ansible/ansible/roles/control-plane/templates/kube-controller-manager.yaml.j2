@@ -9,10 +9,11 @@ metadata:
 spec:
   containers:
   - name: kube-controller-manager
-    image: registry.k8s.io/kube-controller-manager:v{{ kubernetes_version }}
+    image: registry.k8s.io/kube-controller-manager:v{{ versions.kubernetes }}
     command:
       - /usr/local/bin/kube-controller-manager
-      - --kubeconfig={{ config_dir }}/kube-controller-manager.kubeconfig
+      - --kubeconfig
+      - {{ config_dir }}/kube-controller-manager.kubeconfig
       - --cluster-signing-cert-file={{ pki_dir }}/ca.pem
       - --cluster-signing-key-file={{ pki_dir }}/ca-key.pem
       - --service-account-private-key-file={{ pki_dir }}/sa-key.pem

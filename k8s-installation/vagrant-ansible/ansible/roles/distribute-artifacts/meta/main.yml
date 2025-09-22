@@ -1,5 +1,4 @@
-dependencies:
-  - generate-artifacts # Requires certs and kubeconfigs
+dependencies: []
 galaxy_info:
   role_name: distribute-artifacts
   author: yourname

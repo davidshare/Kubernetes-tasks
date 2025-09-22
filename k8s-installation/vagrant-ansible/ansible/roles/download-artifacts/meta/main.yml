@@ -1,1 +1,6 @@
 dependencies: []
+galaxy_info:
+  role_name: download-artifacts
+  author: David Essien
+  description: Download binaries, packages, and yaml templates required to setup the cluster
+  license: MIT

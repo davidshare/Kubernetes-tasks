@@ -1,7 +1,4 @@
-dependencies:
-  - control-plane
-  - bootstrap
-  - networking
+dependencies:  []
 galaxy_info:
   role_name: hardening
   author: David Essien
