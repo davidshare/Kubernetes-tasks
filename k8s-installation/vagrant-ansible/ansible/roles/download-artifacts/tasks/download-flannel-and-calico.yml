@@ -9,6 +9,65 @@
   retries: "{{ download_retries }}"
   delegate_to: localhost
 
+# - name: Patch Flannel manifest with kube-api-url
+#   lineinfile:
+#     path: "{{ paths.artifacts.manifests }}/kube-flannel.yml"
+#     insertafter: '^\s*- --kube-subnet-mgr$'
+#     line: "        - --kube-api-url=https://{{ kubernetes_public_address }}:{{ api_server_port }}"
+#     state: present
+#     backup: yes
+#   delegate_to: localhost
+#   tags: download-artifacts
+
+- name: Patch Flannel manifest with kube-api-url
+  lineinfile:
+    path: "{{ paths.artifacts.manifests }}/kube-flannel.yml"
+    insertafter: '^\s*- --kube-subnet-mgr$'
+    line: "        - --kube-api-url=https://{{ kubernetes_public_address }}:{{ api_server_port }}"
+    state: present
+    backup: yes
+  delegate_to: localhost
+  tags: download-artifacts
+
+- name: Patch Flannel manifest with kubeconfig flag
+  lineinfile:
+    path: "{{ paths.artifacts.manifests }}/kube-flannel.yml"
+    insertafter: '^\s*- --kube-api-url=https://{{ kubernetes_public_address }}:{{ api_server_port }}$'
+    line: "        - --kubeconfig=/etc/kubernetes/configs/kubelet.kubeconfig"
+    state: present
+    backup: yes
+  delegate_to: localhost
+  tags: download-artifacts
+
+- name: Add volume mount to kube-flannel container
+  blockinfile:
+    path: "{{ paths.artifacts.manifests }}/kube-flannel.yml"
+    # Insert after the xtables-lock volumeMount
+    insertafter: '^\s*path: /run/xtables\.lock$'
+    block: |-
+      - name: kubernetes-configs
+        mountPath: /etc/kubernetes/configs
+        readOnly: true
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - kube-flannel volume mount"
+    state: present
+  delegate_to: localhost
+  tags: download-artifacts
+
+- name: Add kubernetes-configs volume to DaemonSet
+  blockinfile:
+    path: "{{ paths.artifacts.manifests }}/kube-flannel.yml"
+    # Insert after the xtables-lock volume definition
+    insertafter: '^\s*type: FileOrCreate$'
+    block: |-
+      - name: kubernetes-configs
+        hostPath:
+          path: {{ config_dir }}
+          type: Directory
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - kubernetes-configs volume"
+    state: present
+  delegate_to: localhost
+  tags: download-artifacts
+
 - name: Download Calico manifest
   get_url:
     url: "{{ download_urls.manifests.calico }}"

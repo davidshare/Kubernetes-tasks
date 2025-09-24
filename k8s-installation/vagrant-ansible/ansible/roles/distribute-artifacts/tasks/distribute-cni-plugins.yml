@@ -25,3 +25,5 @@
     - bandwidth
   become: yes
   when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+  # notify: Restart kubelet
+  tags: container-runtime

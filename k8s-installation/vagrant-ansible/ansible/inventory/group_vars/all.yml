@@ -80,6 +80,7 @@ common_firewall_ports:
   - 6443/tcp
   - 2379/tcp
   - 2380/tcp
+  - 10250/tcp
 
 dns_plugin: "coredns"
 cni_plugin: flannel

@@ -5,3 +5,11 @@
   become: yes
   when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
   tags: container-runtime
+
+- name: Restart kubelet
+  systemd:
+    name: kubelet
+    state: restarted
+  become: yes
+  when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+  tags: container-runtime

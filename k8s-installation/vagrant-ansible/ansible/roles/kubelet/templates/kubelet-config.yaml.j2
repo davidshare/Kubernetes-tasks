@@ -12,6 +12,7 @@ authorization:
 clusterDNS:
   - "{{ service_cidr | ipaddr('network') | ipaddr(10) | ipaddr('address') }}"
 clusterDomain: cluster.local
+clusterCIDR: {{ pod_network_cidr }}
 runtimeRequestTimeout: "15m"
 cgroupDriver: systemd
 containerRuntimeEndpoint: unix:///var/run/containerd/containerd.sock

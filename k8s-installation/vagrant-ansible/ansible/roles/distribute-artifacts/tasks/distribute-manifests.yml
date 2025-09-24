@@ -1,11 +1,11 @@
-- name: Ensure manifests directory exists on masters
+- name: Ensure manifests directory exists on masters and workers
   file:
     path: "{{ paths.kubernetes.manifests_dir }}"
     state: directory
     owner: root
     group: root
     mode: "0755"
-  when: inventory_hostname in groups['masters']
+  when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
 
 - name: Distribute Flannel manifest to masters
   copy:

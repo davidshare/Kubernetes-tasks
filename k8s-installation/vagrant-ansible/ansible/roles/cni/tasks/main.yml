@@ -9,6 +9,18 @@
   when: inventory_hostname == 'master1'
   tags: cni
 
+- name: Generate RBAC configuration for Flannel
+  ansible.builtin.template:
+    src: flannel-rbac.yaml.j2
+    dest: "/etc/kubernetes/flannel-rbac.yaml"
+    owner: root
+    group: root
+    mode: "0644"
+  become: yes
+  when: inventory_hostname == 'master1' and cni_plugin == 'flannel'
+  notify: Apply Flannel RBAC
+  tags: cni
+
 - name: Apply CNI manifest
   ansible.builtin.command:
     cmd: kubectl --kubeconfig={{ cni_kubeconfig }} apply -f {{ cni_manifest_dest }}

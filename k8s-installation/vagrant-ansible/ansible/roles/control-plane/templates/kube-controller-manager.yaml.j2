@@ -16,6 +16,7 @@ spec:
       - {{ config_dir }}/kube-controller-manager.kubeconfig
       - --cluster-signing-cert-file={{ pki_dir }}/ca.pem
       - --cluster-signing-key-file={{ pki_dir }}/ca-key.pem
+      - --cluster-cidr={{ pod_network_cidr }}
       - --service-account-private-key-file={{ pki_dir }}/sa-key.pem
       - --root-ca-file={{ pki_dir }}/ca.pem
       - --service-cluster-ip-range={{ service_cidr }}
