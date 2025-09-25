@@ -1,0 +1,53 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+VAGRANTFILE_API_VERSION = "2"
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+  config.vm.box = "ubuntu/jammy64"
+  config.ssh.insert_key = false # Use Vagrant's insecure key for all VMs
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = 2048
+    vb.cpus = 2
+  end
+
+  # Master node
+  config.vm.define "master" do |master|
+    master.vm.hostname = "master"
+    master.vm.network "private_network", ip: "192.168.56.10"
+  end
+
+  # Worker nodes
+  (1..2).each do |i|
+    config.vm.define "worker#{i}" do |worker|
+      worker.vm.hostname = "worker#{i}"
+      worker.vm.network "private_network", ip: "192.168.56.#{10 + i}"
+    end
+  end
+
+  # Jumpbox node (defined last to be created after master and workers)
+  config.vm.define "jumpbox", autostart: true do |jumpbox|
+    jumpbox.vm.hostname = "jumpbox"
+    jumpbox.vm.network "private_network", ip: "192.168.56.5"
+    jumpbox.vm.provision "shell", inline: <<-SHELL
+      sudo apt-get update
+      sudo apt-get install -y software-properties-common
+      sudo add-apt-repository --yes --update ppa:ansible/ansible
+      sudo apt-get install -y ansible
+      mkdir -p /home/vagrant/ansible
+      mkdir -p /home/vagrant/.ssh
+      chown -R vagrant:vagrant /home/vagrant/ansible
+      chown -R vagrant:vagrant /home/vagrant/.ssh
+    SHELL
+    jumpbox.vm.provision "file", source: "ansible", destination: "/home/vagrant/ansible"
+    jumpbox.vm.provision "file", source: "~/.vagrant.d/insecure_private_key", destination: "/home/vagrant/.ssh/id_rsa"
+    jumpbox.vm.provision "shell", inline: <<-SHELL
+      chmod 600 /home/vagrant/.ssh/id_rsa
+      chown vagrant:vagrant /home/vagrant/.ssh/id_rsa
+    SHELL
+    jumpbox.vm.provision "ansible_local" do |ansible|
+      ansible.playbook = "/home/vagrant/ansible/playbooks/jumpbox.yml"
+      ansible.inventory_path = "/home/vagrant/ansible/inventory/hosts.ini"
+    end
+  end
+end

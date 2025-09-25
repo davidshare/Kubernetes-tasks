@@ -1,0 +1,134 @@
+---
+- name: Common setup for all nodes
+  hosts: master,workers,jumpbox
+  become: yes
+  vars_files:
+    - ../roles/common/defaults/main.yml
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install required packages
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+        state: present
+      when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+
+    - name: Disable swap
+      command: swapoff -a
+      when:
+        - ansible_swaptotal_mb > 0
+        - inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+      changed_when: ansible_swaptotal_mb > 0
+
+    - name: Remove swap from fstab
+      lineinfile:
+        path: /etc/fstab
+        regexp: "^.*swap.*"
+        state: absent
+      when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+
+    - name: Install containerd
+      apt:
+        name: containerd
+        state: present
+      when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+
+    - name: Ensure containerd directory exists
+      file:
+        path: /etc/containerd
+        state: directory
+        mode: "0755"
+      when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+
+    - name: Generate default containerd config
+      command: containerd config default
+      register: containerd_default_config
+      changed_when: false
+      when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+
+    - name: Write full containerd config with systemd cgroup enabled
+      copy:
+        content: "{{ containerd_default_config.stdout | regex_replace('SystemdCgroup = false', 'SystemdCgroup = true') }}"
+        dest: /etc/containerd/config.toml
+        mode: "0644"
+      notify: Restart containerd
+      when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+
+    - name: Ensure containerd is running
+      systemd:
+        name: containerd
+        state: started
+        enabled: yes
+      when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+
+    - name: Add Kubernetes apt key
+      apt_key:
+        url: https://pkgs.k8s.io/core:/stable:/v{{ k8s_version }}/deb/Release.key
+        state: present
+        keyring: /etc/apt/keyrings/kubernetes.gpg
+
+    - name: Add Kubernetes apt repository
+      apt_repository:
+        repo: "deb [signed-by=/etc/apt/keyrings/kubernetes.gpg] https://pkgs.k8s.io/core:/stable:/v{{ k8s_version }}/deb/ /"
+        state: present
+        filename: kubernetes
+
+    - name: Install Kubernetes components
+      apt:
+        name:
+          - "kubeadm={{ k8s_version }}.*"
+          - "kubelet={{ k8s_version }}.*"
+          - "kubectl={{ k8s_version }}.*"
+        state: present
+        update_cache: yes
+      when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+
+    - name: Install kubectl on jumpbox
+      apt:
+        name: "kubectl={{ k8s_version }}.*"
+        state: present
+        update_cache: yes
+      when: inventory_hostname in groups['jumpbox_node']
+
+    - name: Hold Kubernetes packages
+      dpkg_selections:
+        name: "{{ item }}"
+        selection: hold
+      loop:
+        - kubeadm
+        - kubelet
+        - kubectl
+      when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+
+    - name: Load br_netfilter module
+      modprobe:
+        name: br_netfilter
+        state: present
+      when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+
+    - name: Configure sysctl for Kubernetes
+      sysctl:
+        name: "{{ item }}"
+        value: "1"
+        state: present
+        sysctl_set: yes
+        reload: yes
+      loop:
+        - net.bridge.bridge-nf-call-iptables
+        - net.ipv4.ip_forward
+        - net.bridge.bridge-nf-call-ip6tables
+      when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+
+  handlers:
+    - name: Restart containerd
+      systemd:
+        name: containerd
+        state: restarted
+      when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']

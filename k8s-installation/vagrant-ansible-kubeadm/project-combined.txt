@@ -1,0 +1,457 @@
+=== ./join-command.txt ===
+
+kubeadm join 192.168.56.10:6443 --token d30lfd.quruyifff4lok2b4 --discovery-token-ca-cert-hash sha256:602cab5b5e0ca340429fa8b21cd25d52f92eef8d961d8e410ffca8ce13defba7 
+
+=== ./Vagrantfile ===
+
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+VAGRANTFILE_API_VERSION = "2"
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+  config.vm.box = "ubuntu/jammy64"
+  config.ssh.insert_key = false # Use Vagrant's insecure key for all VMs
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = 2048
+    vb.cpus = 2
+  end
+
+  # Master node
+  config.vm.define "master" do |master|
+    master.vm.hostname = "master"
+    master.vm.network "private_network", ip: "192.168.56.10"
+  end
+
+  # Worker nodes
+  (1..2).each do |i|
+    config.vm.define "worker#{i}" do |worker|
+      worker.vm.hostname = "worker#{i}"
+      worker.vm.network "private_network", ip: "192.168.56.#{10 + i}"
+    end
+  end
+
+  # Jumpbox node (defined last to be created after master and workers)
+  config.vm.define "jumpbox", autostart: true do |jumpbox|
+    jumpbox.vm.hostname = "jumpbox"
+    jumpbox.vm.network "private_network", ip: "192.168.56.5"
+    jumpbox.vm.provision "shell", inline: <<-SHELL
+      sudo apt-get update
+      sudo apt-get install -y software-properties-common
+      sudo add-apt-repository --yes --update ppa:ansible/ansible
+      sudo apt-get install -y ansible
+      mkdir -p /home/vagrant/ansible
+      mkdir -p /home/vagrant/.ssh
+      chown -R vagrant:vagrant /home/vagrant/ansible
+      chown -R vagrant:vagrant /home/vagrant/.ssh
+    SHELL
+    jumpbox.vm.provision "file", source: "ansible", destination: "/home/vagrant/ansible"
+    jumpbox.vm.provision "file", source: "~/.vagrant.d/insecure_private_key", destination: "/home/vagrant/.ssh/id_rsa"
+    jumpbox.vm.provision "shell", inline: <<-SHELL
+      chmod 600 /home/vagrant/.ssh/id_rsa
+      chown vagrant:vagrant /home/vagrant/.ssh/id_rsa
+    SHELL
+    jumpbox.vm.provision "ansible_local" do |ansible|
+      ansible.playbook = "/home/vagrant/ansible/playbooks/jumpbox.yml"
+      ansible.inventory_path = "/home/vagrant/ansible/inventory/hosts.ini"
+    end
+  end
+end
+
+=== ./combine.sh ===
+
+#!/bin/bash
+
+# Script to combine files into a single file with path headers
+# Usage: ./combine.sh [directory] [output_file]
+# If directory is specified, combines files from that directory and subdirectories.
+# If no directory is specified, combines from the entire project (current directory).
+# Output file defaults to <basename_directory>-combined.txt if directory specified,
+# or combined_output.txt if not.
+
+DIRECTORY="${1:-.}"
+
+# Determine basename of the directory for default output name
+if [ "$DIRECTORY" = "." ]; then
+    BASENAME="project"
+else
+    BASENAME=$(basename "$DIRECTORY")
+fi
+
+# Shift arguments if directory was provided
+if [ $# -ge 1 ] && [ "$1" != "." ]; then
+    shift
+fi
+
+DEFAULT_OUTPUT="${BASENAME}-combined.txt"
+OUTPUT_FILE="${1:-$DEFAULT_OUTPUT}"
+
+# Function to process each file
+process_file() {
+    local file="$1"
+    echo "=== $file ==="
+    echo ""
+    cat "$file"
+    echo ""
+    echo ""
+}
+
+# Export the function so it can be used by find
+export -f process_file
+
+# Clear the output file if it exists
+> "$OUTPUT_FILE"
+
+# Build find command with exclusions
+find "$DIRECTORY" \
+  -type d \( -name '.vscode' -o -name '.vagrant' -o -name '.qodo' -o -name 'artifacts' -o -name 'files' \) -prune -o \
+  -type f \
+  ! -name "$OUTPUT_FILE" \
+  ! -name "ansible-tree.md" \
+  ! -iname "readme.md" \
+  -exec bash -c 'process_file "$0"' {} \; >> "$OUTPUT_FILE"
+
+echo "All files have been combined into: $OUTPUT_FILE"
+echo "Total files processed: $(find "$DIRECTORY" \
+  -type d \( -name '.vscode' -o -name '.vagrant' -o -name '.qodo' -o -name 'files' \) -prune -o \
+  -type f \
+  ! -name "$OUTPUT_FILE" \
+  ! -name "ansible-tree.md" \
+  ! -iname "readme.md" \
+  -print | wc -l)"
+
+=== ./ansible/inventory/hosts.ini ===
+
+[jumpbox_node]
+jumpbox ansible_host=192.168.56.5 ansible_user=vagrant ansible_ssh_private_key_file=/home/vagrant/.ssh/id_rsa
+
+[masters]
+master ansible_host=192.168.56.10 ansible_user=vagrant ansible_ssh_private_key_file=/home/vagrant/.ssh/id_rsa
+
+[workers]
+worker1 ansible_host=192.168.56.11 ansible_user=vagrant ansible_ssh_private_key_file=/home/vagrant/.ssh/id_rsa
+worker2 ansible_host=192.168.56.12 ansible_user=vagrant ansible_ssh_private_key_file=/home/vagrant/.ssh/id_rsa
+
+[all:vars]
+ansible_python_interpreter=/usr/bin/python3
+ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+
+=== ./ansible/playbooks/workers.yml ===
+
+---
+- name: Set up Kubernetes worker nodes
+  hosts: workers
+  become: yes
+  tasks:
+    - name: Copy join command to worker
+      copy:
+        content: |
+          #!/bin/bash
+          {{ lookup('file', '/vagrant/join-command.txt') }}
+        dest: /tmp/join-command.sh
+        mode: "0755"
+      changed_when: true
+
+    - name: Join worker to cluster
+      command: /tmp/join-command.sh
+      args:
+        creates: /etc/kubernetes/kubelet.conf
+
+
+=== ./ansible/playbooks/jumpbox.yml ===
+
+---
+- name: Set up jumpbox to run Ansible
+  hosts: jumpbox_node
+  become: yes
+  tasks:
+    - name: Install Ansible
+      apt:
+        name: ansible
+        state: present
+        update_cache: yes
+
+    - name: Ensure Ansible directory permissions
+      file:
+        path: /home/vagrant/ansible
+        state: directory
+        owner: vagrant
+        group: vagrant
+        mode: "0755"
+        recurse: yes
+
+    - name: Ensure SSH directory permissions
+      file:
+        path: /home/vagrant/.ssh
+        state: directory
+        owner: vagrant
+        group: vagrant
+        mode: "0700"
+
+    - name: Wait for other VMs to be ready
+      ansible.builtin.wait_for:
+        host: "{{ item }}"
+        port: 22
+        state: started
+        timeout: 300
+      loop:
+        - 192.168.56.10
+        - 192.168.56.11
+        - 192.168.56.12
+      run_once: true
+
+    - name: Run common playbook
+      ansible.builtin.command: ansible-playbook /home/vagrant/ansible/playbooks/common.yml -i /home/vagrant/ansible/inventory/hosts.ini
+      become_user: vagrant
+      args:
+        chdir: /home/vagrant/ansible
+      changed_when: false
+      register: common_result
+      failed_when: common_result.rc != 0
+
+    - name: Run master playbook
+      ansible.builtin.command: ansible-playbook /home/vagrant/ansible/playbooks/master.yml -i /home/vagrant/ansible/inventory/hosts.ini
+      become_user: vagrant
+      args:
+        chdir: /home/vagrant/ansible
+      changed_when: false
+      register: master_result
+      failed_when: master_result.rc != 0
+
+    - name: Create .kube directory on jumpbox
+      file:
+        path: /home/vagrant/.kube
+        state: directory
+        owner: vagrant
+        group: vagrant
+        mode: "0755"
+
+    - name: Copy kubeconfig from master to jumpbox
+      ansible.builtin.command: scp -i /home/vagrant/.ssh/id_rsa vagrant@192.168.56.10:/home/vagrant/.kube/config /home/vagrant/.kube/config
+      become_user: vagrant
+      args:
+        creates: /home/vagrant/.kube/config
+      changed_when: false
+      register: kubeconfig_copy
+      failed_when: kubeconfig_copy.rc != 0
+
+    - name: Set kubeconfig permissions
+      file:
+        path: /home/vagrant/.kube/config
+        owner: vagrant
+        group: vagrant
+        mode: "0644"
+
+    - name: Run workers playbook
+      ansible.builtin.command: ansible-playbook /home/vagrant/ansible/playbooks/workers.yml -i /home/vagrant/ansible/inventory/hosts.ini
+      become_user: vagrant
+      args:
+        chdir: /home/vagrant/ansible
+      changed_when: false
+      register: workers_result
+      failed_when: workers_result.rc != 0
+
+
+=== ./ansible/playbooks/master.yml ===
+
+---
+- name: Set up Kubernetes master node
+  hosts: masters
+  become: yes
+  vars_files:
+    - ../roles/common/defaults/main.yml
+  tasks:
+    - name: Initialize Kubernetes cluster
+      command: kubeadm init --pod-network-cidr=192.168.0.0/16 --control-plane-endpoint=192.168.56.10
+      args:
+        creates: /etc/kubernetes/admin.conf
+      register: kubeadm_init
+
+    - name: Create .kube directory for vagrant user
+      file:
+        path: /home/vagrant/.kube
+        state: directory
+        owner: vagrant
+        group: vagrant
+        mode: "0755"
+
+    - name: Copy kubeconfig to vagrant user
+      copy:
+        src: /etc/kubernetes/admin.conf
+        dest: /home/vagrant/.kube/config
+        owner: vagrant
+        group: vagrant
+        mode: "0644"
+        remote_src: yes
+
+    - name: Wait for Kubernetes API server to be ready
+      ansible.builtin.command: kubectl get --raw=/healthz
+      become_user: vagrant
+      environment:
+        KUBECONFIG: /home/vagrant/.kube/config
+      register: api_health
+      until: api_health.stdout == "ok"
+      retries: 30
+      delay: 10
+      changed_when: false
+
+    - name: Install Calico network addon (v3.30.3)
+      become_user: vagrant
+      command: kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.30.3/manifests/calico.yaml
+      environment:
+        KUBECONFIG: /home/vagrant/.kube/config
+      register: calico_apply
+      changed_when: calico_apply.rc == 0
+
+    - name: Generate join command
+      command: kubeadm token create --print-join-command
+      register: join_command
+      changed_when: false
+
+    - name: Store join command
+      copy:
+        content: "{{ join_command.stdout }}"
+        dest: /vagrant/join-command.txt
+        mode: "0644"
+
+
+=== ./ansible/playbooks/common.yml ===
+
+---
+- name: Common setup for all nodes
+  hosts: master,workers,jumpbox
+  become: yes
+  vars_files:
+    - ../roles/common/defaults/main.yml
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install required packages
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+        state: present
+      when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+
+    - name: Disable swap
+      command: swapoff -a
+      when:
+        - ansible_swaptotal_mb > 0
+        - inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+      changed_when: ansible_swaptotal_mb > 0
+
+    - name: Remove swap from fstab
+      lineinfile:
+        path: /etc/fstab
+        regexp: "^.*swap.*"
+        state: absent
+      when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+
+    - name: Install containerd
+      apt:
+        name: containerd
+        state: present
+      when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+
+    - name: Ensure containerd directory exists
+      file:
+        path: /etc/containerd
+        state: directory
+        mode: "0755"
+      when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+
+    - name: Configure containerd
+      copy:
+        content: |
+          [plugins."io.containerd.grpc.v1.cri"]
+            sandbox_image = "registry.k8s.io/pause:3.10"
+        dest: /etc/containerd/config.toml
+        mode: "0644"
+      notify: Restart containerd
+      when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+
+    - name: Ensure containerd is running
+      systemd:
+        name: containerd
+        state: started
+        enabled: yes
+      when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+
+    - name: Add Kubernetes apt key
+      apt_key:
+        url: https://pkgs.k8s.io/core:/stable:/v{{ k8s_version }}/deb/Release.key
+        state: present
+        keyring: /etc/apt/keyrings/kubernetes.gpg
+
+    - name: Add Kubernetes apt repository
+      apt_repository:
+        repo: "deb [signed-by=/etc/apt/keyrings/kubernetes.gpg] https://pkgs.k8s.io/core:/stable:/v{{ k8s_version }}/deb/ /"
+        state: present
+        filename: kubernetes
+
+    - name: Install Kubernetes components
+      apt:
+        name:
+          - "kubeadm={{ k8s_version }}.*"
+          - "kubelet={{ k8s_version }}.*"
+          - "kubectl={{ k8s_version }}.*"
+        state: present
+        update_cache: yes
+      when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+
+    - name: Install kubectl on jumpbox
+      apt:
+        name: "kubectl={{ k8s_version }}.*"
+        state: present
+        update_cache: yes
+      when: inventory_hostname in groups['jumpbox_node']
+
+    - name: Hold Kubernetes packages
+      dpkg_selections:
+        name: "{{ item }}"
+        selection: hold
+      loop:
+        - kubeadm
+        - kubelet
+        - kubectl
+      when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+
+    - name: Load br_netfilter module
+      modprobe:
+        name: br_netfilter
+        state: present
+      when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+
+    - name: Configure sysctl for Kubernetes
+      sysctl:
+        name: "{{ item }}"
+        value: "1"
+        state: present
+        sysctl_set: yes
+        reload: yes
+      loop:
+        - net.bridge.bridge-nf-call-iptables
+        - net.ipv4.ip_forward
+        - net.bridge.bridge-nf-call-ip6tables
+      when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+
+  handlers:
+    - name: Restart containerd
+      systemd:
+        name: containerd
+        state: restarted
+      when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+
+
+=== ./ansible/roles/common/defaults/main.yml ===
+
+---
+k8s_version: "1.34"
+
+

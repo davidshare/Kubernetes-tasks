@@ -1,0 +1,90 @@
+---
+- name: Set up jumpbox to run Ansible
+  hosts: jumpbox_node
+  become: yes
+  tasks:
+    - name: Install Ansible
+      apt:
+        name: ansible
+        state: present
+        update_cache: yes
+
+    - name: Ensure Ansible directory permissions
+      file:
+        path: /home/vagrant/ansible
+        state: directory
+        owner: vagrant
+        group: vagrant
+        mode: "0755"
+        recurse: yes
+
+    - name: Ensure SSH directory permissions
+      file:
+        path: /home/vagrant/.ssh
+        state: directory
+        owner: vagrant
+        group: vagrant
+        mode: "0700"
+
+    - name: Wait for other VMs to be ready
+      ansible.builtin.wait_for:
+        host: "{{ item }}"
+        port: 22
+        state: started
+        timeout: 300
+      loop:
+        - 192.168.56.10
+        - 192.168.56.11
+        - 192.168.56.12
+      run_once: true
+
+    - name: Run common playbook
+      ansible.builtin.command: ansible-playbook /home/vagrant/ansible/playbooks/common.yml -i /home/vagrant/ansible/inventory/hosts.ini
+      become_user: vagrant
+      args:
+        chdir: /home/vagrant/ansible
+      changed_when: false
+      register: common_result
+      failed_when: common_result.rc != 0
+
+    - name: Run master playbook
+      ansible.builtin.command: ansible-playbook /home/vagrant/ansible/playbooks/master.yml -i /home/vagrant/ansible/inventory/hosts.ini
+      become_user: vagrant
+      args:
+        chdir: /home/vagrant/ansible
+      changed_when: false
+      register: master_result
+      failed_when: master_result.rc != 0
+
+    - name: Create .kube directory on jumpbox
+      file:
+        path: /home/vagrant/.kube
+        state: directory
+        owner: vagrant
+        group: vagrant
+        mode: "0755"
+
+    - name: Copy kubeconfig from master to jumpbox
+      ansible.builtin.command: scp -i /home/vagrant/.ssh/id_rsa vagrant@192.168.56.10:/home/vagrant/.kube/config /home/vagrant/.kube/config
+      become_user: vagrant
+      args:
+        creates: /home/vagrant/.kube/config
+      changed_when: false
+      register: kubeconfig_copy
+      failed_when: kubeconfig_copy.rc != 0
+
+    - name: Set kubeconfig permissions
+      file:
+        path: /home/vagrant/.kube/config
+        owner: vagrant
+        group: vagrant
+        mode: "0644"
+
+    - name: Run workers playbook
+      ansible.builtin.command: ansible-playbook /home/vagrant/ansible/playbooks/workers.yml -i /home/vagrant/ansible/inventory/hosts.ini
+      become_user: vagrant
+      args:
+        chdir: /home/vagrant/ansible
+      changed_when: false
+      register: workers_result
+      failed_when: workers_result.rc != 0

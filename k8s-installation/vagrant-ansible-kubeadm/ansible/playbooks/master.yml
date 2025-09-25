@@ -1,0 +1,72 @@
+---
+- name: Set up Kubernetes master node
+  hosts: masters
+  become: yes
+  vars_files:
+    - ../roles/common/defaults/main.yml
+  tasks:
+    - name: Initialize Kubernetes cluster
+      command: kubeadm init --pod-network-cidr=192.168.0.0/16 --control-plane-endpoint=192.168.56.10 --apiserver-advertise-address=192.168.56.10
+      args:
+        creates: /etc/kubernetes/admin.conf
+      register: kubeadm_init
+      failed_when: kubeadm_init.rc != 0 or 'Your Kubernetes control-plane has initialized successfully' not in kubeadm_init.stdout
+
+    - name: Debug kubeadm init output
+      debug:
+        msg: "{{ kubeadm_init.stdout_lines }}"
+      when: kubeadm_init.rc == 0
+
+    - name: Create .kube directory for vagrant user
+      file:
+        path: /home/vagrant/.kube
+        state: directory
+        owner: vagrant
+        group: vagrant
+        mode: "0755"
+
+    - name: Copy kubeconfig to vagrant user
+      copy:
+        src: /etc/kubernetes/admin.conf
+        dest: /home/vagrant/.kube/config
+        owner: vagrant
+        group: vagrant
+        mode: "0644"
+        remote_src: yes
+
+    - name: Ensure kube-apiserver is running
+      systemd:
+        name: kube-apiserver
+        state: started
+        enabled: yes
+      ignore_errors: yes
+
+    - name: Wait for Kubernetes API server to be ready
+      ansible.builtin.command: kubectl get --raw=/healthz
+      become_user: vagrant
+      environment:
+        KUBECONFIG: /home/vagrant/.kube/config
+      register: api_health
+      until: api_health.stdout == "ok"
+      retries: 60
+      delay: 10
+      changed_when: false
+
+    - name: Install Calico network addon (v3.30.3)
+      become_user: vagrant
+      command: kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.30.3/manifests/calico.yaml
+      environment:
+        KUBECONFIG: /home/vagrant/.kube/config
+      register: calico_apply
+      changed_when: calico_apply.rc == 0
+
+    - name: Generate join command
+      command: kubeadm token create --print-join-command
+      register: join_command
+      changed_when: false
+
+    - name: Store join command
+      copy:
+        content: "{{ join_command.stdout }}"
+        dest: /vagrant/join-command.txt
+        mode: "0644"
