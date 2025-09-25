@@ -126,9 +126,25 @@
         - net.bridge.bridge-nf-call-ip6tables
       when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
 
+    - name: Configure kubelet to use private network IP
+      lineinfile:
+        path: /etc/default/kubelet
+        line: 'KUBELET_EXTRA_ARGS="--node-ip={{ ansible_host }}"'
+        create: yes
+        owner: root
+        group: root
+        mode: "0644"
+      when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+      notify: Restart kubelet
+
   handlers:
     - name: Restart containerd
       systemd:
         name: containerd
+        state: restarted
+      when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']
+    - name: Restart kubelet
+      systemd:
+        name: kubelet
         state: restarted
       when: inventory_hostname in groups['masters'] or inventory_hostname in groups['workers']

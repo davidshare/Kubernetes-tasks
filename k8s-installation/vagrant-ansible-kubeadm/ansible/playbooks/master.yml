@@ -60,6 +60,28 @@
       register: calico_apply
       changed_when: calico_apply.rc == 0
 
+    - name: Wait for Calico pods to be ready
+      ansible.builtin.command: kubectl wait --for=condition=Ready pod -l k8s-app=calico-node -n kube-system --timeout=300s
+      become_user: vagrant
+      environment:
+        KUBECONFIG: /home/vagrant/.kube/config
+      register: calico_ready
+      changed_when: false
+      until: calico_ready.rc == 0
+      retries: 30
+      delay: 10
+
+    - name: Wait for CoreDNS pods to be ready
+      ansible.builtin.command: kubectl wait --for=condition=Ready pod -l k8s-app=kube-dns -n kube-system --timeout=300s
+      become_user: vagrant
+      environment:
+        KUBECONFIG: /home/vagrant/.kube/config
+      register: coredns_ready
+      changed_when: false
+      until: coredns_ready.rc == 0
+      retries: 30
+      delay: 10
+
     - name: Generate join command
       command: kubeadm token create --print-join-command
       register: join_command
